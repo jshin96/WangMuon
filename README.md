@@ -45,8 +45,8 @@ cmake ..
 # 3. Compile the code
 make
 
-Once the GUI opens, type 
+#Once the GUI opens, type 
 
 /run/beamOn 10
 
-to generate 10 events.
+#to generate 10 events.
