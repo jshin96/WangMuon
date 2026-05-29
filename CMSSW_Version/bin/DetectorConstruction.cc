@@ -1,6 +1,7 @@
 // DetectorConstruction.cc
 #include "DetectorConstruction.hh"
 #include "G4NistManager.hh"
+#include "G4Tubs.hh"
 #include "G4Box.hh"
 #include "G4LogicalVolume.hh"
 #include "G4PVPlacement.hh"
@@ -12,14 +13,17 @@
 DetectorConstruction::DetectorConstruction() {}
 DetectorConstruction::~DetectorConstruction() {}
 G4VPhysicalVolume* DetectorConstruction::Construct() {
-    G4NistManager* nist = G4NistManager::Instance();
-    G4Material* air = nist->FindOrBuildMaterial("G4_AIR");
-    G4Material* dirt = nist->FindOrBuildMaterial("G4_SILICON_DIOXIDE"); 
-
-    // --- MATERIAL SETUP (Ensure you have a rock/concrete material) ---
-    G4Material* rock = nistManager->FindOrBuildMaterial("G4_ROCK_DENSITY_SINK")
-                       ? nistManager->FindOrBuildMaterial("G4_ROCK_DENSITY_SINK")
-                       : nistManager->FindOrBuildMaterial("G4_CONCRETE"); // Fallback
+    // 1. Grab the NIST database pointer
+    G4NistManager* nistManager = G4NistManager::Instance();
+    
+    // 2. Define the materials (using the pointer we just created)
+    G4Material* air = nistManager->FindOrBuildMaterial("G4_AIR");
+    G4Material* dirt = nistManager->FindOrBuildMaterial("G4_SILICON_DIOXIDE"); 
+    
+    G4Material* rock = nistManager->FindOrBuildMaterial("G4_ROCK_DENSITY_SINK") 
+                       ? nistManager->FindOrBuildMaterial("G4_ROCK_DENSITY_SINK") 
+                       : nistManager->FindOrBuildMaterial("G4_CONCRETE");
+                       
     G4Material* scintillator = nistManager->FindOrBuildMaterial("G4_PLASTIC_SCINTILLATOR");
 
     // =================================================================
