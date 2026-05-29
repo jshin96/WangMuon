@@ -14,15 +14,15 @@ PrimaryGeneratorAction::PrimaryGeneratorAction() {
     fEcoMug = new EcoMug();
     
     // We want a standard flat surface generation (a plane above your dirt mound)
-    fEcoMug->SetUsePlane(); 
+    fEcoMug->SetUseSky(); 
     
     // Define the boundaries of your sky (a 20m x 20m plane)
-    fEcoMug->SetPlaneCenterPosition(std::array<double, 3>{0., 0., 20.1 * m}); 
-    fEcoMug->SetPlaneSize(60. * m, 60. * m); 
-    
-    // Lock the momentum to your specific high-energy requirements (10 to 100 GeV)
+    fEcoMug->SetSkyCenterPosition({{0., 0., 20.1 * m}}); 
+    fEcoMug->SetSkySize({{60. * m, 60. * m}});
+
+    // Lock the momentum to your specific high-energy requirements (1 MeV to 100 GeV)
     // EcoMug calculates momentum in GeV/c by default
-    fEcoMug->SetMinimumMomentum(10.);
+    fEcoMug->SetMinimumMomentum(0.001);
     fEcoMug->SetMaximumMomentum(100.);
 }
 
