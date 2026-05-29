@@ -17,7 +17,11 @@ Here is a brief explanation of what each core class does in the simulation:
 * **`TrackingAction.cc`**: Currently bypassed (logic handled in SteppingAction).
 * **`ActionInitialization.cc`**: The registry that binds all the user actions (Generator, Run, Event, Stepping) to the Geant4 Run Manager.
 
-## Prerequisites
+
+<!-- Conda Standalone Version --> 
+## Conda Standalone Version
+
+### Prerequisites
 To compile and run this project, you need:
 * **Geant4** (Compiled with Qt5/Qt6 and OpenGL support)
 * **ROOT** (For `wang_muon_data.root` ntuple analysis)
@@ -31,7 +35,7 @@ conda create -n WangMuon -c conda-forge geant4 root cmake compilers
 conda activate WangMuon
 
 
-## How to Compile
+### How to Compile
 This project uses standard CMake out-of-source building. Open your terminal in the main project directory and run:
 
 ```bash
@@ -50,3 +54,36 @@ make
 /run/beamOn 10
 
 #to generate 10 events.
+
+<!-- CMSSW Version --> 
+## CMSSW Version
+
+### Setup
+
+cmsrel CMSSW_14_1_0_pre4
+
+cd CMSSW_14_1_0_pre4/src/
+
+cmsenv
+
+git clone https://github.com/jshin96/WangMuon.git . 
+
+cd CMSSW_Version/bin/
+
+wget wget https://raw.githubusercontent.com/dr4kan/EcoMug/master/EcoMug.h
+
+cd -
+
+scram b -j 8
+
+
+
+
+
+
+
+
+
+
+
+

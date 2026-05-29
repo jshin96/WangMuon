@@ -1,0 +1,12 @@
+<use name="geant4core"/>
+<use name="geant4vis"/>
+<use name="root"/>
+<use name="clhep"/>
+
+<lib name="G4ptl"/>
+
+<environment>
+  <bin name="wang_muon" file="*.cc">
+    <flags CXXFLAGS="-Wno-error=missing-braces -Wno-error=unused-variable"/>
+  </bin>
+</environment>
