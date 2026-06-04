@@ -1,35 +1,58 @@
 #include "RunAction.hh"
 #include "G4AnalysisManager.hh"
-#include "G4Run.hh"
 
-RunAction::RunAction() {
+RunAction::RunAction() : G4UserRunAction() {
     auto analysisManager = G4AnalysisManager::Instance();
-    analysisManager->SetDefaultFileType("csv");
-
-    analysisManager->OpenFile("MoundScanData");
-    analysisManager->CreateNtuple("MuonHits", "Tomography Data");
+    analysisManager->SetDefaultFileType("root"); // Or "csv"
+    
+    // Create the Ntuple
+    analysisManager->OpenFile("MoundTomographyData");
+    analysisManager->CreateNtuple("MuonHits", "4-Layer Tracking Data");
+    
     analysisManager->CreateNtupleIColumn("EventID");
-    analysisManager->CreateNtupleDColumn("X_in");
-    analysisManager->CreateNtupleDColumn("Y_in");
-    analysisManager->CreateNtupleDColumn("Z_in");
-    analysisManager->CreateNtupleDColumn("PX_in");
-    analysisManager->CreateNtupleDColumn("PY_in");
-    analysisManager->CreateNtupleDColumn("PZ_in");
-    analysisManager->CreateNtupleDColumn("X_out");
-    analysisManager->CreateNtupleDColumn("Y_out");
-    analysisManager->CreateNtupleDColumn("Z_out");
-    analysisManager->CreateNtupleDColumn("PX_out");
-    analysisManager->CreateNtupleDColumn("PY_out");
-    analysisManager->CreateNtupleDColumn("PZ_out");
+    
+    // Detector In 1 (Furthest out, -Y)
+    analysisManager->CreateNtupleDColumn("In1_X");
+    analysisManager->CreateNtupleDColumn("In1_Y");
+    analysisManager->CreateNtupleDColumn("In1_Z");
+    analysisManager->CreateNtupleDColumn("In1_Px");
+    analysisManager->CreateNtupleDColumn("In1_Py");
+    analysisManager->CreateNtupleDColumn("In1_Pz");
+
+    // Detector In 2 (Closer to mound, -Y)
+    analysisManager->CreateNtupleDColumn("In2_X");
+    analysisManager->CreateNtupleDColumn("In2_Y");
+    analysisManager->CreateNtupleDColumn("In2_Z");
+    analysisManager->CreateNtupleDColumn("In2_Px");
+    analysisManager->CreateNtupleDColumn("In2_Py");
+    analysisManager->CreateNtupleDColumn("In2_Pz");
+
+    // Detector Out 1 (Closer to mound, +Y)
+    analysisManager->CreateNtupleDColumn("Out1_X");
+    analysisManager->CreateNtupleDColumn("Out1_Y");
+    analysisManager->CreateNtupleDColumn("Out1_Z");
+    analysisManager->CreateNtupleDColumn("Out1_Px");
+    analysisManager->CreateNtupleDColumn("Out1_Py");
+    analysisManager->CreateNtupleDColumn("Out1_Pz");
+
+    // Detector Out 2 (Furthest out, +Y)
+    analysisManager->CreateNtupleDColumn("Out2_X");
+    analysisManager->CreateNtupleDColumn("Out2_Y");
+    analysisManager->CreateNtupleDColumn("Out2_Z");
+    analysisManager->CreateNtupleDColumn("Out2_Px");
+    analysisManager->CreateNtupleDColumn("Out2_Py");
+    analysisManager->CreateNtupleDColumn("Out2_Pz");
 
     analysisManager->FinishNtuple();
 }
 
-RunAction::~RunAction() {}
+RunAction::~RunAction() {
+    delete G4AnalysisManager::Instance();
+}
 
 void RunAction::BeginOfRunAction(const G4Run*) {
     auto analysisManager = G4AnalysisManager::Instance();
-    analysisManager->OpenFile("wang_muon_data.root");
+    analysisManager->OpenFile();
 }
 
 void RunAction::EndOfRunAction(const G4Run*) {

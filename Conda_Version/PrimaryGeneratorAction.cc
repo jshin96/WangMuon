@@ -34,14 +34,14 @@ PrimaryGeneratorAction::~PrimaryGeneratorAction() {
 void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent) {
     // 1. Tell EcoMug to generate a new cosmic ray based on empirical data
     fEcoMug->Generate();
+    double p_tot = fEcoMug->GetGenerationMomentum(); // in GeV
 
     // 2. Extract the physical properties from EcoMug
     // Note: EcoMug uses standard spherical angles naturally!
+    /*
     std::array<double, 3> pos = fEcoMug->GetGenerationPosition();
-    double p_tot = fEcoMug->GetGenerationMomentum(); // in GeV
     double theta = fEcoMug->GetGenerationTheta();
     double phi   = fEcoMug->GetGenerationPhi();
-
     // 3. Hand the EcoMug data over to the Geant4 Particle Gun
     fParticleGun->SetParticlePosition(G4ThreeVector(pos[0], pos[1], pos[2]));
     
@@ -51,6 +51,12 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent) {
         std::sin(theta) * std::sin(phi),
         -std::abs(std::cos(theta)) // Ensure it always points downwards
     ));
+    */
+
+    // Testing with only +Y direction muons 
+    G4ThreeVector pos(0.0*m, -74.95*m, 1.0*m);
+    fParticleGun->SetParticlePosition(pos);
+    fParticleGun->SetParticleMomentumDirection(G4ThreeVector(0., 1., 0.));
     
     // Set the kinetic energy
     // (For highly relativistic muons, p_tot ~ Kinetic Energy)

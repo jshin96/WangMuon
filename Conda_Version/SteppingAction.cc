@@ -1,25 +1,37 @@
 #include "SteppingAction.hh"
 #include "EventAction.hh"
 #include "G4Step.hh"
-#include "G4AnalysisManager.hh"
-#include "G4SystemOfUnits.hh"
 
 SteppingAction::SteppingAction(EventAction* eventAction)
-: fEventAction(eventAction) {}
+: G4UserSteppingAction(), fEventAction(eventAction)
+{}
 
-void SteppingAction::UserSteppingAction(const G4Step* step) {
-	auto volume = step->GetPreStepPoint()->GetTouchableHandle()->GetVolume();
+SteppingAction::~SteppingAction()
+{}
 
-	if (volume->GetName() == "DetectorMinusY") {
-	    fEventAction->SetIncomingHit(
-		step->GetPreStepPoint()->GetPosition(),
-		step->GetPreStepPoint()->GetMomentum()
-	    );
-	}
-	else if (volume->GetName() == "DetectorPlusY") {
-	    fEventAction->SetOutgoingHit(
-		step->GetPreStepPoint()->GetPosition(),
-		step->GetPreStepPoint()->GetMomentum()
-	    );
-	}
+void SteppingAction::UserSteppingAction(const G4Step* step)
+{
+    // Get the volume of the current step
+    auto volume = step->GetPreStepPoint()->GetTouchableHandle()->GetVolume();
+    if (!volume) return;
+
+    G4String volName = volume->GetName();
+
+    // Route the data based on which detector was hit
+    if (volName == "DetectorIn1") {
+        fEventAction->SetHitIn1(step->GetPreStepPoint()->GetPosition(),
+                                step->GetPreStepPoint()->GetMomentum());
+    } 
+    else if (volName == "DetectorIn2") {
+        fEventAction->SetHitIn2(step->GetPreStepPoint()->GetPosition(),
+                                step->GetPreStepPoint()->GetMomentum());
+    }
+    else if (volName == "DetectorOut1") {
+        fEventAction->SetHitOut1(step->GetPreStepPoint()->GetPosition(),
+                                 step->GetPreStepPoint()->GetMomentum());
+    }
+    else if (volName == "DetectorOut2") {
+        fEventAction->SetHitOut2(step->GetPreStepPoint()->GetPosition(),
+                                 step->GetPreStepPoint()->GetMomentum());
+    }
 }

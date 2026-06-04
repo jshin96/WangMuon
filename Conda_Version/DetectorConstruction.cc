@@ -108,25 +108,25 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     // =================================================================
     // 5. The Detectors (4 Layers on Y-Axis, flanking the 26.5m mound)
     // =================================================================
-    G4double detSizeX = 2.0 * m;  // 60m total width to cover the full mound
-    G4double detSizeZ = 2.0 * m;  // 30m total height (covers Z=-15m to Z=+15m)
+    G4double detSizeX = 10.0 * m;  // 10m total width 
+    G4double detSizeZ = 10.0 * m;  // 10m total height
     G4double detThickness = 1.0 * cm; 
     
-    G4Box* solidDetector = new G4Box("DetectorShape", detSizeX, detThickness, detSizeZ);
+    G4Box* solidDetector = new G4Box("DetectorShape", detSizeX/2, detThickness, detSizeZ/2);
 
     // INCOMING FLANK (-Y side, beyond -26.5m)
     fLogicDetectorIn1 = new G4LogicalVolume(solidDetector, scintillator, "DetectorIn1");
-    new G4PVPlacement(0, G4ThreeVector(0, -32.0*m, 0), fLogicDetectorIn1, "DetectorIn1", logicWorld, false, 0, true);
+    new G4PVPlacement(0, G4ThreeVector(0, -32.0*m, detSizeZ/2), fLogicDetectorIn1, "DetectorIn1", logicWorld, false, 0, true);
 
     fLogicDetectorIn2 = new G4LogicalVolume(solidDetector, scintillator, "DetectorIn2");
-    new G4PVPlacement(0, G4ThreeVector(0, -30.0*m, 0), fLogicDetectorIn2, "DetectorIn2", logicWorld, false, 0, true);
+    new G4PVPlacement(0, G4ThreeVector(0, -30.0*m, detSizeZ/2), fLogicDetectorIn2, "DetectorIn2", logicWorld, false, 0, true);
 
     // OUTGOING FLANK (+Y side, beyond +26.5m)
     fLogicDetectorOut1 = new G4LogicalVolume(solidDetector, scintillator, "DetectorOut1");
-    new G4PVPlacement(0, G4ThreeVector(0, 30.0*m, 0), fLogicDetectorOut1, "DetectorOut1", logicWorld, false, 0, true);
+    new G4PVPlacement(0, G4ThreeVector(0, 30.0*m, detSizeZ/2), fLogicDetectorOut1, "DetectorOut1", logicWorld, false, 0, true);
 
     fLogicDetectorOut2 = new G4LogicalVolume(solidDetector, scintillator, "DetectorOut2");
-    new G4PVPlacement(0, G4ThreeVector(0, 32.0*m, 0), fLogicDetectorOut2, "DetectorOut2", logicWorld, false, 0, true);
+    new G4PVPlacement(0, G4ThreeVector(0, 32.0*m, detSizeZ/2), fLogicDetectorOut2, "DetectorOut2", logicWorld, false, 0, true);
 
     // -----------------------------------------------------
     // 6. Visual Attributes
