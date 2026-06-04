@@ -1,0 +1,23 @@
+# --- Basic Job Configuration ---
+executable              = run_job.sh
+arguments               = $(Cluster) $(Process)   # <-- Tell Condor to pass the ID to the bash script
+getenv                  = True
+
+# --- File Transfer ---
+transfer_input_files    = run.mac
+should_transfer_files   = YES
+when_to_transfer_output = ON_EXIT
+
+# --- Logging ---
+output                  = logs/wang_muon_$(Cluster)_$(Process).out
+error                   = logs/wang_muon_$(Cluster)_$(Process).err
+log                     = logs/wang_muon_$(Cluster).log
+
+# --- Resources ---
+request_cpus            = 1
+request_memory          = 2GB
+request_disk            = 2GB
+
+# --- Launch ---
+# Queue 10 separate jobs to test the file renaming!
+queue 500

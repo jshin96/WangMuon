@@ -2,8 +2,8 @@
 #include "PrimaryGeneratorAction.hh"
 #include "RunAction.hh"
 #include "EventAction.hh"
-#include "TrackingAction.hh"
 #include "SteppingAction.hh"
+
 
 void ActionInitialization::BuildForMaster() const {
     SetUserAction(new RunAction());
@@ -11,13 +11,12 @@ void ActionInitialization::BuildForMaster() const {
 
 void ActionInitialization::Build() const {
     SetUserAction(new PrimaryGeneratorAction());
+    SetUserAction(new RunAction());
     
-    // 1. Create the RunAction first
-    auto runAction = new RunAction();
-    SetUserAction(runAction);
-
-    // 2. Pass its pointer to the others so they all share the exact same vectors
-    SetUserAction(new EventAction(runAction));
-    SetUserAction(new TrackingAction(runAction));
-    SetUserAction(new SteppingAction(runAction));
+    // Create the EventAction (Memory Bank)
+    EventAction* eventAction = new EventAction();
+    SetUserAction(eventAction);
+    
+    // Hand the memory bank to the SteppingAction
+    SetUserAction(new SteppingAction(eventAction));
 }

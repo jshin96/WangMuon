@@ -13,12 +13,12 @@ PrimaryGeneratorAction::PrimaryGeneratorAction() {
     // --- Initialize and Configure EcoMug ---
     fEcoMug = new EcoMug();
     
-    // We want a standard flat surface generation (a plane above your dirt mound)
-    fEcoMug->SetUseSky(); 
+    // We want a standard half-spherical surface 
+    fEcoMug->SetUseHSphere(); 
     
     // Define the boundaries of your sky (a 20m x 20m plane)
-    fEcoMug->SetSkyCenterPosition({{0., 0., 20.1 * m}}); 
-    fEcoMug->SetSkySize({{60. * m, 60. * m}});
+    fEcoMug->SetHSphereCenterPosition({{0., 0., 0}}); 
+    fEcoMug->SetHSphereRadius(35.0 * m);
 
     // Lock the momentum to your specific high-energy requirements (1 MeV to 100 GeV)
     // EcoMug calculates momentum in GeV/c by default

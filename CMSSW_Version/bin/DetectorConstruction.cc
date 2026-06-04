@@ -15,16 +15,64 @@ DetectorConstruction::~DetectorConstruction() {}
 G4VPhysicalVolume* DetectorConstruction::Construct() {
     // 1. Grab the NIST database pointer
     G4NistManager* nistManager = G4NistManager::Instance();
-    
-    // 2. Define the materials (using the pointer we just created)
+
+
+
+
+    //------------- Soil Definition---------------------
+    G4Element* elO  = nistManager->FindOrBuildElement("O");
+    G4Element* elSi = nistManager->FindOrBuildElement("Si");
+    G4Element* elAl = nistManager->FindOrBuildElement("Al");
+    G4Element* elFe = nistManager->FindOrBuildElement("Fe");
+    G4Element* elCa = nistManager->FindOrBuildElement("Ca");
+    G4Element* elH  = nistManager->FindOrBuildElement("H"); 
+    G4Element* elC  = nistManager->FindOrBuildElement("C");
+
+    // 2.a Define the Soil Material
+    G4Material* soil = new G4Material("DrySoil", 1.6 * g/cm3, 7);
+
+    // 2.b Add elements by fraction of mass
+    soil->AddElement(elO,  0.51); // 51%
+    soil->AddElement(elSi, 0.28); // 28%
+    soil->AddElement(elAl, 0.07); // 7%
+    soil->AddElement(elFe, 0.05); // 5%
+    soil->AddElement(elCa, 0.03); // 3%
+    soil->AddElement(elH,  0.04); // 4% (Acts as the neutron moderator)
+    soil->AddElement(elC,  0.02); // 2%
+
+
+
+
+
+    //------------- Granite Rock Definition---------------------
+    // 3.a Pull the additional elements for Granite from the NIST database
+    G4Element* elK  = nistManager->FindOrBuildElement("K");
+    G4Element* elNa = nistManager->FindOrBuildElement("Na");
+    G4Element* elMg = nistManager->FindOrBuildElement("Mg");
+
+    // 3.b Construct the Granite material (Density: 2.7 g/cm^3, 8 components)
+    G4Material* rock = new G4Material("Granite", 2.7 * g/cm3, 8);
+    rock->AddElement(elO,  0.488); // 48.8% Oxygen
+    rock->AddElement(elSi, 0.333); // 33.3% Silicon
+    rock->AddElement(elAl, 0.077); // 7.7%  Aluminum
+    rock->AddElement(elFe, 0.027); // 2.7%  Iron
+    rock->AddElement(elK,  0.026); // 2.6%  Potassium
+    rock->AddElement(elNa, 0.025); // 2.5%  Sodium
+    rock->AddElement(elCa, 0.021); // 2.1%  Calcium
+    rock->AddElement(elMg, 0.003); // 0.3%  Magnesium
+
+
+    // 4. Define predefined materials (using the pointer we just created)
     G4Material* air = nistManager->FindOrBuildMaterial("G4_AIR");
-    G4Material* dirt = nistManager->FindOrBuildMaterial("G4_SILICON_DIOXIDE"); 
-    
-    G4Material* rock = nistManager->FindOrBuildMaterial("G4_ROCK_DENSITY_SINK") 
-                       ? nistManager->FindOrBuildMaterial("G4_ROCK_DENSITY_SINK") 
-                       : nistManager->FindOrBuildMaterial("G4_CONCRETE");
-                       
-    G4Material* scintillator = nistManager->FindOrBuildMaterial("G4_PLASTIC_SCINTILLATOR");
+    G4Material* scintillator = nistManager->FindOrBuildMaterial("G4_PLASTIC_SC_VINYLTOLUENE");
+
+
+
+
+
+
+
+
 
     // =================================================================
     // 1. The World (50x50x50 meters)
@@ -37,7 +85,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     // 2. The Dirt Mound (Ellipsoid: r=26.5m, base at z=0)
     // =================================================================
     G4Ellipsoid* solidMound = new G4Ellipsoid("SolidMound", 26.5*m, 26.5*m, 12.7*m, 0., 12.7*m);
-    G4LogicalVolume* logicMound = new G4LogicalVolume(solidMound, dirt, "LogicMound");
+    G4LogicalVolume* logicMound = new G4LogicalVolume(solidMound, soil, "LogicMound");
     new G4PVPlacement(nullptr, G4ThreeVector(0, 0, 0), logicMound, "PhysMound", logicWorld, false, 0, true);
 
     // =================================================================
@@ -73,7 +121,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     // 4. The Ground
     // =================================================================
     G4Box* solidGround = new G4Box("SolidGround", 50*m, 50*m, 12.5*m);
-    G4LogicalVolume* logicGround = new G4LogicalVolume(solidGround, dirt, "LogicGround");
+    G4LogicalVolume* logicGround = new G4LogicalVolume(solidGround, soil, "LogicGround");
     new G4PVPlacement(nullptr, G4ThreeVector(0, 0, -12.5*m), logicGround, "PhysGround", logicWorld, false, 0, true);
 
     // =================================================================
@@ -82,7 +130,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     G4double moundRadius = 26.5 * m;
     G4double detectorDistance = 2.0 * m;
     G4double detectorThickness = 2.0 * cm; // Thin plastic scintillator panel
-    G4double detectorHeight = 1.0 * m;
+    G4double detectorHeight = 20.0 * m;
 
     G4double innerRadius = moundRadius + detectorDistance; // 28.5m
     G4double outerRadius = innerRadius + detectorThickness;
@@ -96,8 +144,18 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
 
     G4LogicalVolume* logicDetector = new G4LogicalVolume(solidDetector, scintillator, "LogicDetector");
 
-    // Place it in the World volume, sitting on the ground (z goes from 0 to 1m, so center is at 0.5m)
+    // Place it in the World volume, sitting on the ground (z goes from 0 to 10m, so center is at 5m)
     new G4PVPlacement(nullptr, G4ThreeVector(0, 0, detectorHeight / 2.0), logicDetector, "PhysDetector", logicWorld, false, 0, true);
+
+    // Flat detector 
+    G4Box* flatDetector = new G4Box("FlatDetector", 20.0*m, 2.0*cm, detectorHeight / 2.0);
+
+    G4LogicalVolume* logicflatDetector = new G4LogicalVolume(flatDetector, scintillator, "LogicFlatDetector");
+
+    // Place it in the World volume, sitting on the ground (z goes from 0 to 1m, so center is at 0.5m)
+    new G4PVPlacement(nullptr, G4ThreeVector(0, innerRadius+(10.0*m)+(2.0*cm), detectorHeight / 2.0), logicflatDetector, "PhysFlatDetector", logicWorld, false, 0, true);
+
+
 
 
     return physWorld;

@@ -1,57 +1,41 @@
 #include "EventAction.hh"
 #include "G4AnalysisManager.hh"
-#include "G4Event.hh"
-#include "G4UImanager.hh"
 
+EventAction::EventAction() : G4UserEventAction() {}
 
-EventAction::EventAction(RunAction* runAction) : fRunAction(runAction) {}
 
 void EventAction::BeginOfEventAction(const G4Event*) {
-    // Wipe the slate clean before the cosmic muon fires
-    fRunAction->ClearEventData();
+    // Reset EVERYTHING
+    fPassedMound = false; fPassedWall = false; fPassedRoom = false;
+    fHitInner = false; fHitOuter = false;
+    fInnerH = 0; fInnerZ = 0; fInnerE = 0; fInnerPID = 0;
+    fOuterH = 0; fOuterZ = 0; fOuterE = 0; fOuterPID = 0;
 }
 
-void EventAction::EndOfEventAction(const G4Event* event) {
+void EventAction::EndOfEventAction(const G4Event*) {
+    // If NO detectors were hit, do not write anything to the file!
+    if (!fHitInner && !fHitOuter) return; 
+
+    // Determine the user's requested Trigger Category (1, 2, or 3)
+    double triggerType = 0.0;
+    if (fHitInner && !fHitOuter) triggerType = 1.0; // Inner Only
+    if (!fHitInner && fHitOuter) triggerType = 2.0; // Outer Only
+    if (fHitInner && fHitOuter)  triggerType = 3.0; // Coincidence!
+
+    // Determine the Physics Category (Mound/Rock/Air)
+    double physicsCat = (fPassedRoom || fPassedWall) ? 1.0 : (fPassedMound ? 2.0 : 3.0);
+
+    // Write the unified row
     auto analysisManager = G4AnalysisManager::Instance();
-    int eventID = event->GetEventID();   
-    // --- NEW: AUTOMATIC SCREENSHOT ---
-    G4UImanager* ui = G4UImanager::GetUIpointer();
-
-    // Force the viewer to render the tracks
-    ui->ApplyCommand("/vis/viewer/refresh");
-
-    // 1. Explicitly lock the format to jpg
-    ui->ApplyCommand("/vis/ogl/set/exportFormat jpg");
-    
-    // 2. Generate a custom filename (e.g., Event_0.png, Event_1.png)
-    G4String exportCmd = "/vis/ogl/export Event_" + std::to_string(eventID);
-    ui->ApplyCommand(exportCmd);
-    G4String renameCmd = "mv Event_" + std::to_string(eventID) + "_*.jpg Event_" + std::to_string(eventID) + ".jpg 2>/dev/null";
-    system(renameCmd.c_str());
-
-    // ---------------------------------
-    // Fill all the scalar columns manually by their column index
-    analysisManager->FillNtupleDColumn(0, fRunAction->fEntryPosX);
-    analysisManager->FillNtupleDColumn(1, fRunAction->fEntryPosY);
-    analysisManager->FillNtupleDColumn(2, fRunAction->fEntryPosZ);
-    analysisManager->FillNtupleDColumn(3, fRunAction->fEntryPx);
-    analysisManager->FillNtupleDColumn(4, fRunAction->fEntryPy);
-    analysisManager->FillNtupleDColumn(5, fRunAction->fEntryPz);
-    analysisManager->FillNtupleDColumn(6, fRunAction->fEntryE);
-
-    analysisManager->FillNtupleDColumn(7, fRunAction->fExitPosX);
-    analysisManager->FillNtupleDColumn(8, fRunAction->fExitPosY);
-    analysisManager->FillNtupleDColumn(9, fRunAction->fExitPosZ);
-    analysisManager->FillNtupleDColumn(10, fRunAction->fExitPx);
-    analysisManager->FillNtupleDColumn(11, fRunAction->fExitPy);
-    analysisManager->FillNtupleDColumn(12, fRunAction->fExitPz);
-    analysisManager->FillNtupleDColumn(13, fRunAction->fExitE);
-
-    analysisManager->FillNtupleIColumn(14, fRunAction->fPassedRoom);
-    analysisManager->FillNtupleDColumn(15, fRunAction->fDistRoom);
-    analysisManager->FillNtupleDColumn(16, fRunAction->fDistDirt);
-
-    // Commit the row (including the bound vectors) to the TTree
+    analysisManager->FillNtupleDColumn(0, triggerType);
+    analysisManager->FillNtupleDColumn(1, physicsCat);
+    analysisManager->FillNtupleDColumn(2, fInnerH);
+    analysisManager->FillNtupleDColumn(3, fInnerZ);
+    analysisManager->FillNtupleDColumn(4, fInnerE);
+    analysisManager->FillNtupleDColumn(5, fInnerPID);
+    analysisManager->FillNtupleDColumn(6, fOuterH);
+    analysisManager->FillNtupleDColumn(7, fOuterZ);
+    analysisManager->FillNtupleDColumn(8, fOuterE);
+    analysisManager->FillNtupleDColumn(9, fOuterPID);
     analysisManager->AddNtupleRow();
-
 }

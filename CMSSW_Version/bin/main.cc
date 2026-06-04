@@ -1,6 +1,6 @@
 #include "G4RunManager.hh"
 #include "G4UImanager.hh"
-#include "FTFP_BERT.hh" // Geant4's pre-packaged physics list
+#include "FTFP_BERT_HP.hh" // Geant4's pre-packaged physics list
 
 #include "DetectorConstruction.hh"
 #include "ActionInitialization.hh"
@@ -11,7 +11,7 @@ int main(int argc, char** argv) {
     
     // 2. Register the THREE PILLARS
     runManager->SetUserInitialization(new DetectorConstruction());
-    runManager->SetUserInitialization(new FTFP_BERT());
+    runManager->SetUserInitialization(new FTFP_BERT_HP());
     runManager->SetUserInitialization(new ActionInitialization());
 
     runManager->Initialize();

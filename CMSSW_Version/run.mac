@@ -1,0 +1,5 @@
+# Initialize the physics and geometry
+/run/initialize
+
+# Fire 64,140 cosmic rays (flux of cosmic muon in 0.1 s with 1/min/cm^2 through 35m radius sphere)
+/run/beamOn 200000
