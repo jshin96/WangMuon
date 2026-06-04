@@ -1,18 +1,27 @@
-// DetectorConstruction.hh
-#ifndef DETECTOR_CONSTRUCTION_HH
-#define DETECTOR_CONSTRUCTION_HH
+#ifndef DetectorConstruction_h
+#define DetectorConstruction_h 1
 
 #include "G4VUserDetectorConstruction.hh"
-#include "G4VPhysicalVolume.hh"
+#include "globals.hh"
 
-class DetectorConstruction : public G4VUserDetectorConstruction {
-public:
+class G4VPhysicalVolume;
+class G4LogicalVolume;
+
+class DetectorConstruction : public G4VUserDetectorConstruction
+{
+  public:
     DetectorConstruction();
-    ~DetectorConstruction() override;
+    virtual ~DetectorConstruction();
 
-    // This is the one method Geant4 demands we write.
-    // It must return the Physical Volume of the "World"
-    G4VPhysicalVolume* Construct() override;
+    virtual G4VPhysicalVolume* Construct();
+
+  private:
+    // We keep pointers to logical volumes in case we want to attach 
+    // SensitiveDetectors to them later instead of using SteppingAction.
+    G4LogicalVolume* fLogicDetectorIn1;
+    G4LogicalVolume* fLogicDetectorIn2;
+    G4LogicalVolume* fLogicDetectorOut1;
+    G4LogicalVolume* fLogicDetectorOut2;
 };
 
 #endif

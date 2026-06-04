@@ -1,136 +1,159 @@
-// DetectorConstruction.cc
 #include "DetectorConstruction.hh"
+
+#include "G4RunManager.hh"
 #include "G4NistManager.hh"
-#include "G4Tubs.hh"
+#include "G4Material.hh"
+#include "G4Element.hh"
 #include "G4Box.hh"
+#include "G4Ellipsoid.hh"
 #include "G4LogicalVolume.hh"
 #include "G4PVPlacement.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4VisAttributes.hh"
-#include "G4Ellipsoid.hh"
 
+DetectorConstruction::DetectorConstruction()
+: G4VUserDetectorConstruction(),
+  fLogicDetectorIn1(nullptr), fLogicDetectorIn2(nullptr),
+  fLogicDetectorOut1(nullptr), fLogicDetectorOut2(nullptr)
+{ }
 
-DetectorConstruction::DetectorConstruction() {}
-DetectorConstruction::~DetectorConstruction() {}
-G4VPhysicalVolume* DetectorConstruction::Construct() {
-    // 1. Grab the NIST database pointer
+DetectorConstruction::~DetectorConstruction()
+{ }
+
+G4VPhysicalVolume* DetectorConstruction::Construct()
+{
+    // -----------------------------------------------------
+    // 1. Materials & Elements
+    // -----------------------------------------------------
     G4NistManager* nistManager = G4NistManager::Instance();
-    
-    // 2. Define the materials (using the pointer we just created)
     G4Material* air = nistManager->FindOrBuildMaterial("G4_AIR");
-    G4Material* dirt = nistManager->FindOrBuildMaterial("G4_SILICON_DIOXIDE"); 
+    G4Material* scintillator = nistManager->FindOrBuildMaterial("G4_PLASTIC_SC_VINYLTOLUENE");
+
+    G4Element* elO  = nistManager->FindOrBuildElement("O");
+    G4Element* elSi = nistManager->FindOrBuildElement("Si");
+    G4Element* elAl = nistManager->FindOrBuildElement("Al");
+    G4Element* elFe = nistManager->FindOrBuildElement("Fe");
+    G4Element* elCa = nistManager->FindOrBuildElement("Ca");
+    G4Element* elH  = nistManager->FindOrBuildElement("H");
+    G4Element* elC  = nistManager->FindOrBuildElement("C");
+    G4Element* elK  = nistManager->FindOrBuildElement("K");
+    G4Element* elNa = nistManager->FindOrBuildElement("Na");
+    G4Element* elMg = nistManager->FindOrBuildElement("Mg");
+
+    G4Material* soil = new G4Material("DrySoil", 1.6 * g/cm3, 7);
+    soil->AddElement(elO,  0.51); 
+    soil->AddElement(elSi, 0.28); 
+    soil->AddElement(elAl, 0.07); 
+    soil->AddElement(elFe, 0.05); 
+    soil->AddElement(elCa, 0.03); 
+    soil->AddElement(elH,  0.04); 
+    soil->AddElement(elC,  0.02); 
+
+    G4Material* rock = new G4Material("Granite", 2.7 * g/cm3, 8);
+    rock->AddElement(elO,  0.488); 
+    rock->AddElement(elSi, 0.333); 
+    rock->AddElement(elAl, 0.077); 
+    rock->AddElement(elFe, 0.027); 
+    rock->AddElement(elK,  0.026); 
+    rock->AddElement(elNa, 0.025); 
+    rock->AddElement(elCa, 0.021); 
+    rock->AddElement(elMg, 0.003); 
+
+    // -----------------------------------------------------
+    // 1.5 World Volume
+    // -----------------------------------------------------
+    G4double worldSizeXY = 150 * m; // Expanded to fit wider detectors
+    G4double worldSizeZ  = 100 * m;
     
-    G4Material* rock = nistManager->FindOrBuildMaterial("G4_ROCK_DENSITY_SINK") 
-                       ? nistManager->FindOrBuildMaterial("G4_ROCK_DENSITY_SINK") 
-                       : nistManager->FindOrBuildMaterial("G4_CONCRETE");
-                       
-    G4Material* scintillator = nistManager->FindOrBuildMaterial("G4_PLASTIC_SCINTILLATOR");
-    // =================================================================
-    // 1. The World (50x50x50 meters)
-    // =================================================================
-    G4Box* solidWorld = new G4Box("SolidWorld", 50*m, 50*m, 25*m);
-    G4LogicalVolume* logicWorld = new G4LogicalVolume(solidWorld, air, "LogicWorld");
-    G4VPhysicalVolume* physWorld = new G4PVPlacement(nullptr, G4ThreeVector(0,0,0), logicWorld, "PhysWorld", nullptr, false, 0, true);
+    G4Box* solidWorld = new G4Box("World", worldSizeXY/2, worldSizeXY/2, worldSizeZ/2);
+    G4LogicalVolume* logicWorld = new G4LogicalVolume(solidWorld, air, "World");
+    G4VPhysicalVolume* physWorld = new G4PVPlacement(0, G4ThreeVector(), logicWorld, "World", 0, false, 0, true);
 
     // =================================================================
     // 2. The Dirt Mound (Ellipsoid: r=26.5m, base at z=0)
     // =================================================================
     G4Ellipsoid* solidMound = new G4Ellipsoid("SolidMound", 26.5*m, 26.5*m, 12.7*m, 0., 12.7*m);
-    G4LogicalVolume* logicMound = new G4LogicalVolume(solidMound, dirt, "LogicMound");
+    G4LogicalVolume* logicMound = new G4LogicalVolume(solidMound, soil, "LogicMound");
     new G4PVPlacement(nullptr, G4ThreeVector(0, 0, 0), logicMound, "PhysMound", logicWorld, false, 0, true);
 
     // =================================================================
     // 3. The Nested Room Setup (Mound -> Rock Wall -> Air Room)
     // =================================================================
     G4double wallThickness = 20.0 * cm;
-    
-    // Half-dimensions of the inner air room (Original: 6.5m x 4.2m x 2.1m total)
     G4double roomX = 3.25 * m;
     G4double roomY = 2.1  * m;
     G4double roomZ = 1.05 * m;
 
-    // Create the outer Rock Wall Box (Room dimensions + thickness)
-    G4Box* solidRockWall = new G4Box("SolidRockWall", 
-                                     roomX + wallThickness, 
-                                     roomY + wallThickness, 
+    G4Box* solidRockWall = new G4Box("SolidRockWall",
+                                     roomX + wallThickness,
+                                     roomY + wallThickness,
                                      roomZ + wallThickness);
     G4LogicalVolume* logicRockWall = new G4LogicalVolume(solidRockWall, rock, "LogicRockWall");
 
-    // Create the inner Air Room Box
     G4Box* solidRoom = new G4Box("SolidRoom", roomX, roomY, roomZ);
     G4LogicalVolume* logicRoom = new G4LogicalVolume(solidRoom, air, "LogicRoom");
 
-    // Place the Air Room directly in the CENTER of the Rock Wall box
     new G4PVPlacement(nullptr, G4ThreeVector(0, 0, 0), logicRoom, "PhysRoom", logicRockWall, false, 0, true);
 
-    // Place the complete Rock Wall assembly inside the Mound.
-    // Shifted up slightly to ensure the 20cm rock floor rests perfectly on the z=0 ground plane.
-    G4double wallCenterZ = roomZ + wallThickness; // 1.05m + 0.2m = 1.25m
+    G4double wallCenterZ = roomZ + wallThickness; 
     new G4PVPlacement(nullptr, G4ThreeVector(0, 0, wallCenterZ), logicRockWall, "PhysRockWall", logicMound, false, 0, true);
 
     // =================================================================
     // 4. The Ground
     // =================================================================
-    G4Box* solidGround = new G4Box("SolidGround", 50*m, 50*m, 12.5*m);
-    G4LogicalVolume* logicGround = new G4LogicalVolume(solidGround, dirt, "LogicGround");
-    new G4PVPlacement(nullptr, G4ThreeVector(0, 0, -12.5*m), logicGround, "PhysGround", logicWorld, false, 0, true);
+    G4Box* solidGround = new G4Box("SolidGround", worldSizeXY/2, worldSizeXY/2, worldSizeZ/4);
+    G4LogicalVolume* logicGround = new G4LogicalVolume(solidGround, soil, "LogicGround");
+    new G4PVPlacement(nullptr, G4ThreeVector(0, 0, - worldSizeZ/4), logicGround, "PhysGround", logicWorld, false, 0, true);
 
     // =================================================================
-    // 5. The Muon Detector ($2\pi$ Cylindrical Shell)
+    // 5. The Detectors (4 Layers on Y-Axis, flanking the 26.5m mound)
     // =================================================================
-    G4double moundRadius = 26.5 * m;
-    G4double detectorDistance = 2.0 * m;
-    G4double detectorThickness = 2.0 * cm; // Thin plastic scintillator panel
-    G4double detectorHeight = 1.0 * m;
-
-    G4double innerRadius = moundRadius + detectorDistance; // 28.5m
-    G4double outerRadius = innerRadius + detectorThickness;
-
-    G4Tubs* solidDetector = new G4Tubs("SolidDetector", 
-                                       innerRadius, 
-                                       outerRadius, 
-                                       detectorHeight / 2.0, // Geant4 expects half-height
-                                       0.0 * deg, 
-                                       360.0 * deg); // Full 2-pi coverage
-
-    G4LogicalVolume* logicDetector = new G4LogicalVolume(solidDetector, scintillator, "LogicDetector");
+    G4double detSizeX = 2.0 * m;  // 60m total width to cover the full mound
+    G4double detSizeZ = 2.0 * m;  // 30m total height (covers Z=-15m to Z=+15m)
+    G4double detThickness = 1.0 * cm; 
     
-    // Place it in the World volume, sitting on the ground (z goes from 0 to 1m, so center is at 0.5m)
-    new G4PVPlacement(nullptr, G4ThreeVector(0, 0, detectorHeight / 2.0), logicDetector, "PhysDetector", logicWorld, false, 0, true);
+    G4Box* solidDetector = new G4Box("DetectorShape", detSizeX, detThickness, detSizeZ);
 
-    // --- VISUALIZATION ATTRIBUTES ---
-    
-    // 1. Make the 50m World box completely invisible
+    // INCOMING FLANK (-Y side, beyond -26.5m)
+    fLogicDetectorIn1 = new G4LogicalVolume(solidDetector, scintillator, "DetectorIn1");
+    new G4PVPlacement(0, G4ThreeVector(0, -32.0*m, 0), fLogicDetectorIn1, "DetectorIn1", logicWorld, false, 0, true);
+
+    fLogicDetectorIn2 = new G4LogicalVolume(solidDetector, scintillator, "DetectorIn2");
+    new G4PVPlacement(0, G4ThreeVector(0, -30.0*m, 0), fLogicDetectorIn2, "DetectorIn2", logicWorld, false, 0, true);
+
+    // OUTGOING FLANK (+Y side, beyond +26.5m)
+    fLogicDetectorOut1 = new G4LogicalVolume(solidDetector, scintillator, "DetectorOut1");
+    new G4PVPlacement(0, G4ThreeVector(0, 30.0*m, 0), fLogicDetectorOut1, "DetectorOut1", logicWorld, false, 0, true);
+
+    fLogicDetectorOut2 = new G4LogicalVolume(solidDetector, scintillator, "DetectorOut2");
+    new G4PVPlacement(0, G4ThreeVector(0, 32.0*m, 0), fLogicDetectorOut2, "DetectorOut2", logicWorld, false, 0, true);
+
+    // -----------------------------------------------------
+    // 6. Visual Attributes
+    // -----------------------------------------------------
     logicWorld->SetVisAttributes(G4VisAttributes::GetInvisible());
 
-    // 2. Make the Dirt Mound semi-transparent brown (so we can see inside it)
-    // G4Colour(Red, Green, Blue, Alpha/Transparency)
-    G4VisAttributes* dirtVis = new G4VisAttributes(G4Colour(0.6, 0.4, 0.2, 0.2)); 
-    dirtVis->SetForceSolid(true);
-    logicMound->SetVisAttributes(dirtVis);
-
-    // 3. Make the Empty Room solid blue so it stands out brightly in the center
-    G4VisAttributes* roomVis = new G4VisAttributes(G4Colour(0.0, 0.5, 1.0, 0.8));
-    roomVis->SetForceSolid(true);
-    logicRoom->SetVisAttributes(roomVis);
-
-    // 4. Make the Ground solid, dark brown
-    G4VisAttributes* groundVis = new G4VisAttributes(G4Colour(0.3, 0.2, 0.1, 0.4));
+    G4VisAttributes* groundVis = new G4VisAttributes(G4Colour(0.4, 0.25, 0.1, 0.4)); // Darker soil
     groundVis->SetForceSolid(true);
     logicGround->SetVisAttributes(groundVis);
 
-    // 5. Make the Rock wall solid
-    G4VisAttributes* wallVis = new G4VisAttributes(G4Colour(0.6, 0.6, 0.6, 0.4));
-    wallVis->SetForceSolid(true);
-    logicRockWall->SetVisAttributes(wallVis);
+    G4VisAttributes* moundVis = new G4VisAttributes(G4Colour(0.6, 0.4, 0.2, 0.3)); // Lighter soil
+    moundVis->SetForceSolid(true);
+    logicMound->SetVisAttributes(moundVis);
 
-    // 6. Make the detector solid
-    G4VisAttributes* detectorVis = new G4VisAttributes(G4Colour(1.0, 1.0, 1.0, 1.0));
-    detectorVis->SetForceSolid(true);
-    logicDetector->SetVisAttributes(detectorVis);
+    G4VisAttributes* rockVis = new G4VisAttributes(G4Colour(0.5, 0.5, 0.5, 1.0)); // Solid grey rock
+    rockVis->SetForceSolid(true);
+    logicRockWall->SetVisAttributes(rockVis);
 
+    G4VisAttributes* roomVis = new G4VisAttributes(G4Colour(1.0, 1.0, 1.0, 0.2)); // Air interior
+    logicRoom->SetVisAttributes(roomVis);
 
-
+    G4VisAttributes* detVis = new G4VisAttributes(G4Colour(0.0, 0.8, 1.0, 0.5)); // Cyan detectors
+    detVis->SetForceSolid(true);
+    fLogicDetectorIn1->SetVisAttributes(detVis);
+    fLogicDetectorIn2->SetVisAttributes(detVis);
+    fLogicDetectorOut1->SetVisAttributes(detVis);
+    fLogicDetectorOut2->SetVisAttributes(detVis);
 
     return physWorld;
 }

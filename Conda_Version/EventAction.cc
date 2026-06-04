@@ -1,57 +1,52 @@
 #include "EventAction.hh"
-#include "G4AnalysisManager.hh"
 #include "G4Event.hh"
-#include "G4UImanager.hh"
+#include "G4RunManager.hh"
+#include "G4AnalysisManager.hh"
 
+EventAction::EventAction()
+: G4UserEventAction(),
+  fPosIn(0.), fMomIn(0.), fPosOut(0.), fMomOut(0.),
+  fHitIn(false), fHitOut(false)
+{}
 
-EventAction::EventAction(RunAction* runAction) : fRunAction(runAction) {}
+EventAction::~EventAction()
+{}
 
-void EventAction::BeginOfEventAction(const G4Event*) {
-    // Wipe the slate clean before the cosmic muon fires
-    fRunAction->ClearEventData();
+void EventAction::BeginOfEventAction(const G4Event*)
+{
+    // Reset flags for the new muon
+    fHitIn = false;
+    fHitOut = false;
 }
 
-void EventAction::EndOfEventAction(const G4Event* event) {
-    auto analysisManager = G4AnalysisManager::Instance();
-    int eventID = event->GetEventID();   
-    // --- NEW: AUTOMATIC SCREENSHOT ---
-    G4UImanager* ui = G4UImanager::GetUIpointer();
+void EventAction::EndOfEventAction(const G4Event* event)
+{
+    // We only care about coincidence events (muons that didn't stop inside the mound)
+    if (fHitIn && fHitOut) {
+        
+        // Get analysis manager
+        auto analysisManager = G4AnalysisManager::Instance();
 
-    // Force the viewer to render the tracks
-    ui->ApplyCommand("/vis/viewer/refresh");
+        // Fill the Ntuple (assuming ID 0)
+        analysisManager->FillNtupleIColumn(0, event->GetEventID());
+        
+        // --- INCOMING DETECTOR (-Y Axis) ---
+        analysisManager->FillNtupleDColumn(1, fPosIn.x());
+        analysisManager->FillNtupleDColumn(2, fPosIn.y());
+        analysisManager->FillNtupleDColumn(3, fPosIn.z());
+        analysisManager->FillNtupleDColumn(4, fMomIn.x());
+        analysisManager->FillNtupleDColumn(5, fMomIn.y());
+        analysisManager->FillNtupleDColumn(6, fMomIn.z());
 
-    // 1. Explicitly lock the format to jpg
-    ui->ApplyCommand("/vis/ogl/set/exportFormat jpg");
-    
-    // 2. Generate a custom filename (e.g., Event_0.png, Event_1.png)
-    G4String exportCmd = "/vis/ogl/export Event_" + std::to_string(eventID);
-    ui->ApplyCommand(exportCmd);
-    G4String renameCmd = "mv Event_" + std::to_string(eventID) + "_*.jpg Event_" + std::to_string(eventID) + ".jpg 2>/dev/null";
-    system(renameCmd.c_str());
+        // --- OUTGOING DETECTOR (+Y Axis) ---
+        analysisManager->FillNtupleDColumn(7, fPosOut.x());
+        analysisManager->FillNtupleDColumn(8, fPosOut.y());
+        analysisManager->FillNtupleDColumn(9, fPosOut.z());
+        analysisManager->FillNtupleDColumn(10, fMomOut.x());
+        analysisManager->FillNtupleDColumn(11, fMomOut.y());
+        analysisManager->FillNtupleDColumn(12, fMomOut.z());
 
-    // ---------------------------------
-    // Fill all the scalar columns manually by their column index
-    analysisManager->FillNtupleDColumn(0, fRunAction->fEntryPosX);
-    analysisManager->FillNtupleDColumn(1, fRunAction->fEntryPosY);
-    analysisManager->FillNtupleDColumn(2, fRunAction->fEntryPosZ);
-    analysisManager->FillNtupleDColumn(3, fRunAction->fEntryPx);
-    analysisManager->FillNtupleDColumn(4, fRunAction->fEntryPy);
-    analysisManager->FillNtupleDColumn(5, fRunAction->fEntryPz);
-    analysisManager->FillNtupleDColumn(6, fRunAction->fEntryE);
-
-    analysisManager->FillNtupleDColumn(7, fRunAction->fExitPosX);
-    analysisManager->FillNtupleDColumn(8, fRunAction->fExitPosY);
-    analysisManager->FillNtupleDColumn(9, fRunAction->fExitPosZ);
-    analysisManager->FillNtupleDColumn(10, fRunAction->fExitPx);
-    analysisManager->FillNtupleDColumn(11, fRunAction->fExitPy);
-    analysisManager->FillNtupleDColumn(12, fRunAction->fExitPz);
-    analysisManager->FillNtupleDColumn(13, fRunAction->fExitE);
-
-    analysisManager->FillNtupleIColumn(14, fRunAction->fPassedRoom);
-    analysisManager->FillNtupleDColumn(15, fRunAction->fDistRoom);
-    analysisManager->FillNtupleDColumn(16, fRunAction->fDistDirt);
-
-    // Commit the row (including the bound vectors) to the TTree
-    analysisManager->AddNtupleRow();
-
+        // Commit the row to the file
+        analysisManager->AddNtupleRow();
+    }
 }

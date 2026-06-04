@@ -3,51 +3,37 @@
 
 #include "G4UserEventAction.hh"
 #include "globals.hh"
+#include "G4ThreeVector.hh"
 
-class EventAction : public G4UserEventAction {
-public:
+class EventAction : public G4UserEventAction
+{
+  public:
     EventAction();
-    ~EventAction() override = default;
+    virtual ~EventAction();
 
-    void BeginOfEventAction(const G4Event* event) override;
-    void EndOfEventAction(const G4Event* event) override;
+    virtual void  BeginOfEventAction(const G4Event* event);
+    virtual void    EndOfEventAction(const G4Event* event);
 
-    // Setters for the SteppingAction to flip
-    void SetPassedMound() { fPassedMound = true; }
-    void SetPassedWall()  { fPassedWall = true; }
-    void SetPassedRoom()  { fPassedRoom = true; }
-
-
-
-    void SetInnerHit(double h, double z, double e, double pid) {
-        if (fHitInner) return; // Only record the first particle to cross
-        fHitInner = true; fInnerH = h; fInnerZ = z; fInnerE = e; fInnerPID = pid;
+    // Setters called by SteppingAction
+    void SetIncomingHit(G4ThreeVector pos, G4ThreeVector mom) {
+        fPosIn = pos; 
+        fMomIn = mom; 
+        fHitIn = true;
+    }
+    
+    void SetOutgoingHit(G4ThreeVector pos, G4ThreeVector mom) {
+        fPosOut = pos; 
+        fMomOut = mom; 
+        fHitOut = true;
     }
 
-    void SetOuterHit(double h, double z, double e, double pid) {
-        if (fHitOuter) return; // Only record the first particle to cross
-        fHitOuter = true; fOuterH = h; fOuterZ = z; fOuterE = e; fOuterPID = pid;
-    }
-
-
-    // Getters for the final logic check
-    bool GetPassedMound() const { return fPassedMound; }
-    bool GetPassedWall()  const { return fPassedWall; }
-    bool GetPassedRoom()  const { return fPassedRoom; }
-
-private:
-    bool fPassedMound = false;
-    bool fPassedWall = false;
-    bool fPassedRoom = false;
-
-    bool fHitInner = false;
-    bool fHitOuter = false;
-
-    // Inner Data
-    double fInnerH = 0.0, fInnerZ = 0.0, fInnerE = 0.0, fInnerPID = 0.0;
-
-    // Outer Data
-    double fOuterH = 0.0, fOuterZ = 0.0, fOuterE = 0.0, fOuterPID = 0.0;
+  private:
+    G4ThreeVector fPosIn, fMomIn;
+    G4ThreeVector fPosOut, fMomOut;
+    
+    // Flags to ensure we only record muons that made it all the way through
+    G4bool fHitIn;
+    G4bool fHitOut;
 };
 
 #endif

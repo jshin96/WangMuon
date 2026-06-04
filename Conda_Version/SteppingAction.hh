@@ -1,16 +1,20 @@
-#ifndef STEPPING_ACTION_HH
-#define STEPPING_ACTION_HH
+#ifndef SteppingAction_h
+#define SteppingAction_h 1
 
 #include "G4UserSteppingAction.hh"
-#include "RunAction.hh"
+#include "globals.hh"
+
+class EventAction; // Forward declaration
 
 class SteppingAction : public G4UserSteppingAction {
 public:
-    SteppingAction(RunAction* runAction);
+    SteppingAction(EventAction* eventAction); // Require the memory bank
     ~SteppingAction() override = default;
+
     void UserSteppingAction(const G4Step* step) override;
 
 private:
-    RunAction* fRunAction;
+    EventAction* fEventAction; // Store the pointer
 };
+
 #endif

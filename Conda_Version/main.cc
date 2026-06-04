@@ -1,44 +1,34 @@
-#include "G4RunManagerFactory.hh"
-#include "G4UImanager.hh"
-#include "G4VisExecutive.hh"
-#include "G4UIExecutive.hh"
 #include "G4RunManager.hh"
-#include "FTFP_BERT.hh" // Geant4's pre-packaged physics list
+#include "G4UImanager.hh"
+#include "FTFP_BERT_HP.hh" // Geant4's pre-packaged physics list
 
 #include "DetectorConstruction.hh"
 #include "ActionInitialization.hh"
 
 int main(int argc, char** argv) {
-    // 1. Create the User Interface
-    G4UIExecutive* ui = new G4UIExecutive(argc, argv);
-
-    // 2. Create the Run Manager
-//    auto* runManager = G4RunManagerFactory::CreateRunManager();
+    // 1. Create the Run Manager (The Physics Engine)
     G4RunManager* runManager = new G4RunManager;
-    // 3. Register the THREE PILLARS
+    
+    // 2. Register the THREE PILLARS
     runManager->SetUserInitialization(new DetectorConstruction());
-    runManager->SetUserInitialization(new FTFP_BERT());
+    runManager->SetUserInitialization(new FTFP_BERT_HP());
     runManager->SetUserInitialization(new ActionInitialization());
 
     runManager->Initialize();
-
-    // 4. Initialize Visualization
-    G4VisManager* visManager = new G4VisExecutive();
-    visManager->Initialize();
-
-    // 5. Tell the UI to draw our box
+    
+    // 3. Get the pointer to the User Interface manager (To read the macro)
     G4UImanager* UImanager = G4UImanager::GetUIpointer();
-    UImanager->ApplyCommand("/vis/open OGL");
-    UImanager->ApplyCommand("/vis/drawVolume");
-    UImanager->ApplyCommand("/vis/viewer/set/autoRefresh true");
-    UImanager->ApplyCommand("/vis/scene/add/trajectories smooth");
+    
+    // 4. Force Batch Mode (Condor only)
+    if (argc > 1) {
+        G4String command = "/control/execute ";
+        G4String fileName = argv[1];
+        UImanager->ApplyCommand(command + fileName);
+    } else {
+        G4cout << "Please provide a macro file (e.g., wang_muon run.mac)" << G4endl;
+    }
 
-    // 6. Start the interactive session!
-    ui->SessionStart();
-
-    // Clean up after the window is closed
-    delete ui;
-    delete visManager;
+    // 5. Clean up the engine
     delete runManager;
     return 0;
 }
