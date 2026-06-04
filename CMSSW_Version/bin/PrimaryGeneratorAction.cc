@@ -37,10 +37,18 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent) {
 
     // 2. Extract the physical properties from EcoMug
     // Note: EcoMug uses standard spherical angles naturally!
+    /*
     std::array<double, 3> pos = fEcoMug->GetGenerationPosition();
     double p_tot = fEcoMug->GetGenerationMomentum(); // in GeV
     double theta = fEcoMug->GetGenerationTheta();
     double phi   = fEcoMug->GetGenerationPhi();
+    */
+
+    // Testing with only +Y direction muons 
+    std::array<double, 3> pos = {((G4UniformRand()*15)-7.5)*m,-74.95*m,((G4UniformRand()*15))*m};
+    double p_tot = fEcoMug->GetGenerationMomentum(); // in GeV
+    double theta = std::acos(0.0);
+    double phi   = std::acos(0.0);
 
     // 3. Hand the EcoMug data over to the Geant4 Particle Gun
     fParticleGun->SetParticlePosition(G4ThreeVector(pos[0], pos[1], pos[2]));

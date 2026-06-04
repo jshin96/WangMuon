@@ -1,52 +1,67 @@
 #include "EventAction.hh"
 #include "G4Event.hh"
-#include "G4RunManager.hh"
 #include "G4AnalysisManager.hh"
 
 EventAction::EventAction()
 : G4UserEventAction(),
-  fPosIn(0.), fMomIn(0.), fPosOut(0.), fMomOut(0.),
-  fHitIn(false), fHitOut(false)
+  fPosIn1(0.), fMomIn1(0.), fPosIn2(0.), fMomIn2(0.),
+  fPosOut1(0.), fMomOut1(0.), fPosOut2(0.), fMomOut2(0.),
+  fHitIn1(false), fHitIn2(false), fHitOut1(false), fHitOut2(false)
 {}
 
-EventAction::~EventAction()
-{}
+EventAction::~EventAction() {}
 
 void EventAction::BeginOfEventAction(const G4Event*)
 {
-    // Reset flags for the new muon
-    fHitIn = false;
-    fHitOut = false;
+    // Reset the 4-fold coincidence trigger
+    fHitIn1 = false;
+    fHitIn2 = false;
+    fHitOut1 = false;
+    fHitOut2 = false;
 }
 
 void EventAction::EndOfEventAction(const G4Event* event)
 {
-    // We only care about coincidence events (muons that didn't stop inside the mound)
-    if (fHitIn && fHitOut) {
+    // Hardware Trigger: Only record muons that survived the entire journey
+    if (fHitIn1 && fHitIn2 && fHitOut1 && fHitOut2) {
         
-        // Get analysis manager
         auto analysisManager = G4AnalysisManager::Instance();
+        int col = 0;
 
-        // Fill the Ntuple (assuming ID 0)
-        analysisManager->FillNtupleIColumn(0, event->GetEventID());
+        analysisManager->FillNtupleIColumn(col++, event->GetEventID());
         
-        // --- INCOMING DETECTOR (-Y Axis) ---
-        analysisManager->FillNtupleDColumn(1, fPosIn.x());
-        analysisManager->FillNtupleDColumn(2, fPosIn.y());
-        analysisManager->FillNtupleDColumn(3, fPosIn.z());
-        analysisManager->FillNtupleDColumn(4, fMomIn.x());
-        analysisManager->FillNtupleDColumn(5, fMomIn.y());
-        analysisManager->FillNtupleDColumn(6, fMomIn.z());
+        // In 1
+        analysisManager->FillNtupleDColumn(col++, fPosIn1.x());
+        analysisManager->FillNtupleDColumn(col++, fPosIn1.y());
+        analysisManager->FillNtupleDColumn(col++, fPosIn1.z());
+        analysisManager->FillNtupleDColumn(col++, fMomIn1.x());
+        analysisManager->FillNtupleDColumn(col++, fMomIn1.y());
+        analysisManager->FillNtupleDColumn(col++, fMomIn1.z());
 
-        // --- OUTGOING DETECTOR (+Y Axis) ---
-        analysisManager->FillNtupleDColumn(7, fPosOut.x());
-        analysisManager->FillNtupleDColumn(8, fPosOut.y());
-        analysisManager->FillNtupleDColumn(9, fPosOut.z());
-        analysisManager->FillNtupleDColumn(10, fMomOut.x());
-        analysisManager->FillNtupleDColumn(11, fMomOut.y());
-        analysisManager->FillNtupleDColumn(12, fMomOut.z());
+        // In 2
+        analysisManager->FillNtupleDColumn(col++, fPosIn2.x());
+        analysisManager->FillNtupleDColumn(col++, fPosIn2.y());
+        analysisManager->FillNtupleDColumn(col++, fPosIn2.z());
+        analysisManager->FillNtupleDColumn(col++, fMomIn2.x());
+        analysisManager->FillNtupleDColumn(col++, fMomIn2.y());
+        analysisManager->FillNtupleDColumn(col++, fMomIn2.z());
 
-        // Commit the row to the file
+        // Out 1
+        analysisManager->FillNtupleDColumn(col++, fPosOut1.x());
+        analysisManager->FillNtupleDColumn(col++, fPosOut1.y());
+        analysisManager->FillNtupleDColumn(col++, fPosOut1.z());
+        analysisManager->FillNtupleDColumn(col++, fMomOut1.x());
+        analysisManager->FillNtupleDColumn(col++, fMomOut1.y());
+        analysisManager->FillNtupleDColumn(col++, fMomOut1.z());
+
+        // Out 2
+        analysisManager->FillNtupleDColumn(col++, fPosOut2.x());
+        analysisManager->FillNtupleDColumn(col++, fPosOut2.y());
+        analysisManager->FillNtupleDColumn(col++, fPosOut2.z());
+        analysisManager->FillNtupleDColumn(col++, fMomOut2.x());
+        analysisManager->FillNtupleDColumn(col++, fMomOut2.y());
+        analysisManager->FillNtupleDColumn(col++, fMomOut2.z());
+
         analysisManager->AddNtupleRow();
     }
 }
