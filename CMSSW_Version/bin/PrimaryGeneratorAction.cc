@@ -18,7 +18,7 @@ PrimaryGeneratorAction::PrimaryGeneratorAction() {
     
     // Define the boundaries of your sky (a 20m x 20m plane)
     fEcoMug->SetHSphereCenterPosition({{0., 0., 0}}); 
-    fEcoMug->SetHSphereRadius(35.0 * m);
+    fEcoMug->SetHSphereRadius(74.99 * m);
 
     // Lock the momentum to your specific high-energy requirements (1 MeV to 100 GeV)
     // EcoMug calculates momentum in GeV/c by default

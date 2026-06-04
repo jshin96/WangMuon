@@ -141,11 +141,12 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     moundVis->SetForceSolid(true);
     logicMound->SetVisAttributes(moundVis);
 
-    G4VisAttributes* rockVis = new G4VisAttributes(G4Colour(0.5, 0.5, 0.5, 1.0)); // Solid grey rock
+    G4VisAttributes* rockVis = new G4VisAttributes(G4Colour(0.5, 0.5, 0.5, 0.8)); // Solid grey rock
     rockVis->SetForceSolid(true);
     logicRockWall->SetVisAttributes(rockVis);
 
-    G4VisAttributes* roomVis = new G4VisAttributes(G4Colour(1.0, 1.0, 1.0, 0.2)); // Air interior
+    G4VisAttributes* roomVis = new G4VisAttributes(G4Colour(0.0, 0.8, 1.0, 1.0)); // Air interior
+    roomVis->SetForceSolid(true);
     logicRoom->SetVisAttributes(roomVis);
 
     G4VisAttributes* detVis = new G4VisAttributes(G4Colour(0.0, 0.8, 1.0, 0.5)); // Cyan detectors

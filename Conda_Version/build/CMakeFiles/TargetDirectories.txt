@@ -1,0 +1,3 @@
+/Users/John/Desktop/WangMuon/Conda_Version/build/CMakeFiles/wang_muon.dir
+/Users/John/Desktop/WangMuon/Conda_Version/build/CMakeFiles/edit_cache.dir
+/Users/John/Desktop/WangMuon/Conda_Version/build/CMakeFiles/rebuild_cache.dir
