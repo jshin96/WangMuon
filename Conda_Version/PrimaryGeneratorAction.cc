@@ -1,4 +1,5 @@
 #include "PrimaryGeneratorAction.hh"
+#include "Randomize.hh"
 #include "G4ParticleTable.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4Event.hh"
@@ -22,7 +23,7 @@ PrimaryGeneratorAction::PrimaryGeneratorAction() {
 
     // Lock the momentum to your specific high-energy requirements (1 MeV to 100 GeV)
     // EcoMug calculates momentum in GeV/c by default
-    fEcoMug->SetMinimumMomentum(0.001);
+    fEcoMug->SetMinimumMomentum(10.);
     fEcoMug->SetMaximumMomentum(100.);
 }
 
@@ -54,7 +55,7 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent) {
     */
 
     // Testing with only +Y direction muons 
-    G4ThreeVector pos(0.0*m, -74.95*m, 1.0*m);
+    G4ThreeVector pos(((G4UniformRand()*15)-7.5)*m,-74.95*m,((G4UniformRand()*15))*m);
     fParticleGun->SetParticlePosition(pos);
     fParticleGun->SetParticleMomentumDirection(G4ThreeVector(0., 1., 0.));
     

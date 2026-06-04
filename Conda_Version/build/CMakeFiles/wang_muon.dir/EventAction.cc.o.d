@@ -814,26 +814,12 @@ CMakeFiles/wang_muon.dir/EventAction.cc.o: \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4TrajectoryContainer.hh \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4VTrajectory.hh \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4VUserEventInformation.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4RunManager.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4EventManager.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4StackManager.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4UserStackingAction.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ClassificationOfNewTrack.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4StackedTrack.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4TrackStack.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4SmartTrackStack.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4SubEventTrackStack.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4SubEvent.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Track.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Units/PhysicalConstants.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Units/defs.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Units/SystemOfUnits.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/trkdefs.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4LogicalVolume.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Region.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4GeomSplitter.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/geomwdefs.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4AutoLock.hh \
+  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4AnalysisManager.hh \
+  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4GenericAnalysisManager.hh \
+  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ToolsAnalysisManager.hh \
+  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4VAnalysisManager.hh \
+  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4AnalysisManagerState.hh \
+  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4AnalysisVerbose.hh \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Threading.hh \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/chrono \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__chrono/file_clock.h \
@@ -852,78 +838,7 @@ CMakeFiles/wang_muon.dir/EventAction.cc.o: \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__stop_token/stop_source.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__thread/thread.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__thread/this_thread.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Region.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4VPhysicalVolume.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/geomdefs.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4RotationMatrix.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Vector/Rotation.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Vector/RotationInterfaces.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Vector/LorentzVector.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Vector/LorentzVector.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Vector/ZMxpv.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Vector/AxisAngle.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Vector/AxisAngle.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Vector/RotationInterfaces.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Vector/RotationX.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Vector/RotationX.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Vector/RotationY.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Vector/RotationY.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Vector/RotationZ.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Vector/RotationZ.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Vector/Rotation.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4VPhysicalVolume.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4LogicalVolume.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4DynamicParticle.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ElectronOccupancy.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Log.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4LorentzVector.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ParticleDefinition.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4PDefManager.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ParticleDefinition.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ParticleMomentum.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4DynamicParticle.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4TrackStatus.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4TouchableHandle.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4VTouchable.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4TouchableHistory.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4NavigationHistory.hh \
-  /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/assert.h \
-  /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_assert.h \
-  /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/_static_assert.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4AffineTransform.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Transform3D.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Geometry/Transform3D.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Geometry/defs.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Geometry/Transform3D.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Geometry/Point3D.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Geometry/BasicVector3D.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Geometry/Vector3D.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Geometry/Normal3D.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4AffineTransform.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4NavigationLevel.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4NavigationLevelRep.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4NavigationLevelRep.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4NavigationLevel.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4NavigationHistoryPool.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4NavigationHistory.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4TouchableHistory.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ReferenceCountedHandle.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4VUserTrackInformation.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4PhysicsModelCatalog.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Material.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Element.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ElementTable.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ElementVector.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4IonisParamElm.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Isotope.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4IsotopeVector.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4IonisParamMat.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4DensityEffectCalculator.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4MaterialPropertiesTable.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4MaterialPropertiesIndex.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4MaterialPropertyVector.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4PhysicsFreeVector.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4PhysicsVector.hh \
+  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4AnalysisUtilities.hh \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/fstream \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/filesystem \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__filesystem/copy_options.h \
@@ -942,152 +857,6 @@ CMakeFiles/wang_muon.dir/EventAction.cc.o: \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__filesystem/path_iterator.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__filesystem/recursive_directory_iterator.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__filesystem/u8path.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4PhysicsVectorType.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4PhysicsVector.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4MaterialTable.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4SandiaTable.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4OrderedTable.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4DataVector.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4DataVector.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Track.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Step.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4StepPoint.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4SteppingControl.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4StepStatus.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4StepPoint.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4TrackVector.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Step.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4PrimaryTransformer.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ParticleTable.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ParticleTableIterator.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ParticleTable.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4TrackingManager.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4SteppingManager.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Navigator.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4NormalNavigation.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4VNavigation.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4VSolid.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4VSolid.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4AuxiliaryNavServices.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4AuxiliaryNavServices.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4NormalNavigation.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4VoxelNavigation.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4NavigationLogger.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4BlockingList.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4BlockingList.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4SmartVoxelProxy.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4SmartVoxelProxy.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4SmartVoxelNode.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4SmartVoxelNode.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4SmartVoxelHeader.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4SmartVoxelHeader.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4VoxelNavigation.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ParameterisedNavigation.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4VPVParameterisation.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4VVolumeMaterialScanner.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ParameterisedNavigation.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ReplicaNavigation.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ReplicaNavigation.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4RegularNavigation.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4VExternalNavigation.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Navigator.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4NoProcess.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4VProcess.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/Randomize.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/Randomize.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/defs.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/DRand48Engine.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandomEngine.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandomEngine.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Utility/noncopyable.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Utility/defs.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/DualRand.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/Hurd160Engine.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/Hurd288Engine.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/JamesRandom.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/MixMaxRng.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/MTwistEngine.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandEngine.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RanecuEngine.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RanluxEngine.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/Ranlux64Engine.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RanluxppEngine.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RanshiEngine.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/TripleRand.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandBinomial.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/Random.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/Random.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Utility/memory.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandBinomial.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandBreitWigner.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandFlat.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Utility/thread_local.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandFlat.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandBreitWigner.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandChiSquare.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandChiSquare.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandExponential.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandExponential.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandExpZiggurat.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandBit.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandBit.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandGamma.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandGamma.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandGauss.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandGauss.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandGaussQ.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandGaussQ.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandGaussT.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/Stat.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandGaussT.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandGaussZiggurat.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandGeneral.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandGeneral.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandLandau.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandLandau.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandPoissonQ.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandPoisson.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandPoisson.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandPoissonQ.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandPoissonT.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandPoissonT.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandSkewNormal.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandSkewNormal.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandStudentT.h \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/CLHEP/Random/RandStudentT.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4PhysicsTable.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4PhysicsTable.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4VParticleChange.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4VParticleChange.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ForceCondition.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4GPILSelection.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ParticleChange.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ParticleChange.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ProcessType.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ProcessManager.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ProcessVector.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ProcessVector.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ProcessManager.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4UserSteppingAction.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4VSteppingVerbose.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/trkgdefs.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4TrackingMessenger.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4UImessenger.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4UIdirectory.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4UIcommand.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ApplicationState.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4UIparameter.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4UserTrackingAction.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4RunManagerKernel.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/rundefs.hh \
-  /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/list \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4AnalysisManager.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4GenericAnalysisManager.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ToolsAnalysisManager.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4VAnalysisManager.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4AnalysisManagerState.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4AnalysisVerbose.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4AnalysisUtilities.hh \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4VTBaseHnManager.hh \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4HnInformation.hh \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4BinScheme.hh \
@@ -1110,7 +879,13 @@ CMakeFiles/wang_muon.dir/EventAction.cc.o: \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4THnToolsManager.hh \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4THnManager.hh \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4THnManager.icc \
+  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4AutoLock.hh \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4THnMessenger.hh \
+  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4UImessenger.hh \
+  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4UIdirectory.hh \
+  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4UIcommand.hh \
+  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4ApplicationState.hh \
+  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4UIparameter.hh \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4THnToolsManager.icc \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4THnMessenger.icc \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Tokenizer.hh \

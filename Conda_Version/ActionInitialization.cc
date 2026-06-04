@@ -1,22 +1,36 @@
 #include "ActionInitialization.hh"
 #include "PrimaryGeneratorAction.hh"
-#include "RunAction.hh"
-#include "EventAction.hh"
-#include "SteppingAction.hh"
+#include "RunAction.hh"      
+#include "EventAction.hh"     
+#include "SteppingAction.hh"  
 
+ActionInitialization::ActionInitialization()
+ : G4VUserActionInitialization()
+{}
 
-void ActionInitialization::BuildForMaster() const {
+ActionInitialization::~ActionInitialization()
+{}
+
+// This is called in multithreading mode to merge the ROOT files
+void ActionInitialization::BuildForMaster() const
+{
     SetUserAction(new RunAction());
 }
 
-void ActionInitialization::Build() const {
+// This is where the worker threads get their action classes
+void ActionInitialization::Build() const
+{
+    // 1. Particle Gun
     SetUserAction(new PrimaryGeneratorAction());
-    SetUserAction(new RunAction());
-    
-    // Create the EventAction (Memory Bank)
+
+    // 2. Run Action (handles the ROOT file setup)
+    RunAction* runAction = new RunAction();
+    SetUserAction(runAction);
+
+    // 3. Event Action (handles the coincidence trigger)
     EventAction* eventAction = new EventAction();
     SetUserAction(eventAction);
-    
-    // Hand the memory bank to the SteppingAction
+
+    // 4. Stepping Action (needs the EventAction pointer to pass the hits)
     SetUserAction(new SteppingAction(eventAction));
 }

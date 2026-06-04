@@ -1,12 +1,15 @@
-#ifndef ACTION_INITIALIZATION_HH
-#define ACTION_INITIALIZATION_HH
+#ifndef ActionInitialization_h
+#define ActionInitialization_h 1
 
 #include "G4VUserActionInitialization.hh"
 
 class ActionInitialization : public G4VUserActionInitialization {
-public:
+  public:
+    ActionInitialization();
+    virtual ~ActionInitialization(); // <-- This fixes the destructor error!
 
-    void BuildForMaster() const override;
-    void Build() const override;
+    virtual void BuildForMaster() const;
+    virtual void Build() const;
 };
+
 #endif
