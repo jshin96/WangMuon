@@ -6,10 +6,18 @@
 #include "G4Element.hh"
 #include "G4Box.hh"
 #include "G4Ellipsoid.hh"
+#include "G4TessellatedSolid.hh"
+#include "G4TriangularFacet.hh"
+#include "G4VSolid.hh"
 #include "G4LogicalVolume.hh"
 #include "G4PVPlacement.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4VisAttributes.hh"
+#include "G4Exception.hh"
+#include "G4ios.hh"
+#include <cmath>
+#include <cstdlib>
+#include <string>
 
 DetectorConstruction::DetectorConstruction()
 : G4VUserDetectorConstruction(),
@@ -22,6 +30,30 @@ DetectorConstruction::~DetectorConstruction()
 
 G4VPhysicalVolume* DetectorConstruction::Construct()
 {
+    // Positive inclination means that terrain descends as global +Y increases:
+    // z_ground(y) = -tan(inclination) * y.  The local visualisation defaults
+    // to the requested 15 degree site slope; set the environment variable to
+    // zero to draw the former horizontal configuration.
+    G4double groundInclineDeg = 15.0;
+    if (const char* inclineSetting = std::getenv("MOUND_GROUND_INCLINE_DEG")) {
+        try {
+            groundInclineDeg = std::stod(inclineSetting);
+        } catch (const std::exception&) {
+            G4Exception("DetectorConstruction::Construct", "InvalidGroundIncline",
+                        FatalException,
+                        "MOUND_GROUND_INCLINE_DEG must be a finite number of degrees.");
+        }
+    }
+    if (!std::isfinite(groundInclineDeg) || std::abs(groundInclineDeg) >= 30.0) {
+        G4Exception("DetectorConstruction::Construct", "InvalidGroundIncline",
+                    FatalException,
+                    "MOUND_GROUND_INCLINE_DEG must be finite and between -30 and 30 degrees.");
+    }
+    const G4double groundIncline = groundInclineDeg * deg;
+    const G4double groundSlope = std::tan(groundIncline);
+    G4cout << "Ground inclination: " << groundInclineDeg
+           << " deg (positive is downhill in +Y)" << G4endl;
+
     // -----------------------------------------------------
     // 1. Materials & Elements
     // -----------------------------------------------------
@@ -70,40 +102,134 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     G4VPhysicalVolume* physWorld = new G4PVPlacement(0, G4ThreeVector(), logicWorld, "World", 0, false, 0, true);
 
     // =================================================================
-    // 2. The Dirt Mound (Ellipsoid: r=26.5m, base at z=0)
+    // 2. Vertical-axis mound resting on the tilted terrain
     // =================================================================
-    G4Ellipsoid* solidMound = new G4Ellipsoid("SolidMound", 26.5*m, 26.5*m, 12.7*m, 0., 12.7*m);
+    // The mound height is always measured along global Z, not along the
+    // ground normal: z_top = z_ground(y) + H sqrt(1-r^2/R^2).
+    G4VSolid* solidMound = nullptr;
+    constexpr G4double moundRadius = 26.5*m;
+    constexpr G4double moundHeight = 12.7*m;
+    if (std::abs(groundInclineDeg) < 1.0e-12) {
+        solidMound = new G4Ellipsoid("SolidMound", moundRadius, moundRadius,
+                                     moundHeight, 0., moundHeight);
+    } else {
+        constexpr int radialSegments = 32;
+        constexpr int azimuthSegments = 96;
+        constexpr G4double pi = 3.14159265358979323846;
+        auto surfacePoint = [&](int radialIndex, int azimuthIndex, bool upper) {
+            const G4double fraction = static_cast<G4double>(radialIndex) / radialSegments;
+            const G4double radius = moundRadius * fraction;
+            const G4double phi = 2.0 * pi * azimuthIndex / azimuthSegments;
+            const G4double x = radius * std::cos(phi);
+            const G4double y = radius * std::sin(phi);
+            const G4double height = upper
+                ? moundHeight * std::sqrt(1.0 - fraction * fraction) : 0.0;
+            return G4ThreeVector(x, y, -groundSlope * y + height);
+        };
+        auto* tiltedMound = new G4TessellatedSolid("SolidMound");
+        const G4ThreeVector lowerCentre(0., 0., 0.);
+        const G4ThreeVector upperCentre(0., 0., moundHeight);
+        for (int phi = 0; phi < azimuthSegments; ++phi) {
+            const int next = (phi + 1) % azimuthSegments;
+            tiltedMound->AddFacet(new G4TriangularFacet(
+                lowerCentre, surfacePoint(1, next, false), surfacePoint(1, phi, false), ABSOLUTE));
+            tiltedMound->AddFacet(new G4TriangularFacet(
+                upperCentre, surfacePoint(1, phi, true), surfacePoint(1, next, true), ABSOLUTE));
+        }
+        for (int radial = 1; radial < radialSegments; ++radial) {
+            for (int phi = 0; phi < azimuthSegments; ++phi) {
+                const int next = (phi + 1) % azimuthSegments;
+                const auto lowerInner = surfacePoint(radial, phi, false);
+                const auto lowerOuter = surfacePoint(radial + 1, phi, false);
+                const auto lowerOuterNext = surfacePoint(radial + 1, next, false);
+                const auto lowerInnerNext = surfacePoint(radial, next, false);
+                tiltedMound->AddFacet(new G4TriangularFacet(
+                    lowerInner, lowerOuterNext, lowerOuter, ABSOLUTE));
+                tiltedMound->AddFacet(new G4TriangularFacet(
+                    lowerInner, lowerInnerNext, lowerOuterNext, ABSOLUTE));
+
+                const auto upperInner = surfacePoint(radial, phi, true);
+                const auto upperOuter = surfacePoint(radial + 1, phi, true);
+                const auto upperOuterNext = surfacePoint(radial + 1, next, true);
+                const auto upperInnerNext = surfacePoint(radial, next, true);
+                tiltedMound->AddFacet(new G4TriangularFacet(
+                    upperInner, upperOuter, upperOuterNext, ABSOLUTE));
+                tiltedMound->AddFacet(new G4TriangularFacet(
+                    upperInner, upperOuterNext, upperInnerNext, ABSOLUTE));
+            }
+        }
+        tiltedMound->SetSolidClosed(true);
+        solidMound = tiltedMound;
+    }
     G4LogicalVolume* logicMound = new G4LogicalVolume(solidMound, soil, "LogicMound");
     new G4PVPlacement(nullptr, G4ThreeVector(0, 0, 0), logicMound, "PhysMound", logicWorld, false, 0, true);
 
     // =================================================================
     // 3. The Nested Room Setup (Mound -> Rock Wall -> Air Room)
     // =================================================================
-    G4double wallThickness = 20.0 * cm;
-    G4double roomX = 3.25 * m;
-    G4double roomY = 2.1  * m;
-    G4double roomZ = 1.05 * m;
+    G4double wallThickness = 50.0 * cm;
+    G4double roomX = 8.0 * m;
+    G4double roomY = 8.0 * m;
+    G4double roomZ = 4.0 * m;
 
     G4Box* solidRockWall = new G4Box("SolidRockWall",
-                                     roomX + wallThickness,
-                                     roomY + wallThickness,
-                                     roomZ + wallThickness);
+                                     roomX/2 + wallThickness,
+                                     roomY/2 + wallThickness,
+                                     roomZ/2 + wallThickness);
     G4LogicalVolume* logicRockWall = new G4LogicalVolume(solidRockWall, rock, "LogicRockWall");
 
-    G4Box* solidRoom = new G4Box("SolidRoom", roomX, roomY, roomZ);
+    G4Box* solidRoom = new G4Box("SolidRoom", roomX/2, roomY/2, roomZ/2);
     G4LogicalVolume* logicRoom = new G4LogicalVolume(solidRoom, air, "LogicRoom");
 
     new G4PVPlacement(nullptr, G4ThreeVector(0, 0, 0), logicRoom, "PhysRoom", logicRockWall, false, 0, true);
 
-    G4double wallCenterZ = roomZ + wallThickness; 
+    // The room is vertical in global Z and referenced to the terrain height
+    // at its centre (x=y=0), retaining 2 m of mound below the outer wall.
+    G4double wallCenterZ = roomZ + wallThickness;
     new G4PVPlacement(nullptr, G4ThreeVector(0, 0, wallCenterZ), logicRockWall, "PhysRockWall", logicMound, false, 0, true);
 
     // =================================================================
     // 4. The Ground
     // =================================================================
-    G4Box* solidGround = new G4Box("SolidGround", worldSizeXY/2, worldSizeXY/2, worldSizeZ/4);
+    G4VSolid* solidGround = nullptr;
+    if (std::abs(groundInclineDeg) < 1.0e-12) {
+        solidGround = new G4Box("SolidGround", worldSizeXY/2, worldSizeXY/2, worldSizeZ/4);
+    } else {
+        // Terrain is limited to the mound footprint so it remains clear of
+        // the local detector planes at y = +/-30 and +/-32 m.
+        constexpr int terrainSegments = 96;
+        constexpr G4double pi = 3.14159265358979323846;
+        const G4double terrainBottomZ = -45.0*m;
+        auto topPoint = [&](int index) {
+            const G4double phi = 2.0 * pi * index / terrainSegments;
+            const G4double x = moundRadius * std::cos(phi);
+            const G4double y = moundRadius * std::sin(phi);
+            return G4ThreeVector(x, y, -groundSlope * y);
+        };
+        auto bottomPoint = [&](int index) {
+            const G4double phi = 2.0 * pi * index / terrainSegments;
+            return G4ThreeVector(moundRadius * std::cos(phi),
+                                 moundRadius * std::sin(phi), terrainBottomZ);
+        };
+        auto* tiltedGround = new G4TessellatedSolid("SolidGround");
+        const G4ThreeVector topCentre(0., 0., 0.);
+        const G4ThreeVector bottomCentre(0., 0., terrainBottomZ);
+        for (int index = 0; index < terrainSegments; ++index) {
+            const int next = (index + 1) % terrainSegments;
+            const auto top = topPoint(index);
+            const auto topNext = topPoint(next);
+            const auto bottom = bottomPoint(index);
+            const auto bottomNext = bottomPoint(next);
+            tiltedGround->AddFacet(new G4TriangularFacet(topCentre, top, topNext, ABSOLUTE));
+            tiltedGround->AddFacet(new G4TriangularFacet(bottomCentre, bottomNext, bottom, ABSOLUTE));
+            tiltedGround->AddFacet(new G4TriangularFacet(top, bottom, bottomNext, ABSOLUTE));
+            tiltedGround->AddFacet(new G4TriangularFacet(top, bottomNext, topNext, ABSOLUTE));
+        }
+        tiltedGround->SetSolidClosed(true);
+        solidGround = tiltedGround;
+    }
     G4LogicalVolume* logicGround = new G4LogicalVolume(solidGround, soil, "LogicGround");
-    new G4PVPlacement(nullptr, G4ThreeVector(0, 0, - worldSizeZ/4), logicGround, "PhysGround", logicWorld, false, 0, true);
+    new G4PVPlacement(nullptr, G4ThreeVector(), logicGround, "PhysGround", logicWorld, false, 0, true);
 
     // =================================================================
     // 5. The Detectors (4 Layers on Y-Axis, flanking the 26.5m mound)
@@ -114,19 +240,24 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     
     G4Box* solidDetector = new G4Box("DetectorShape", detSizeX/2, detThickness, detSizeZ/2);
 
+    const auto terrainZ = [groundSlope](G4double y) { return -groundSlope * y; };
+
+    // The detector planes stay vertical in global Z, but their lower edges
+    // follow the local terrain.  A muon parallel to the terrain and passing
+    // through the room therefore remains inside both detector acceptances.
     // INCOMING FLANK (-Y side, beyond -26.5m)
     fLogicDetectorIn1 = new G4LogicalVolume(solidDetector, scintillator, "DetectorIn1");
-    new G4PVPlacement(0, G4ThreeVector(0, -32.0*m, detSizeZ/2), fLogicDetectorIn1, "DetectorIn1", logicWorld, false, 0, true);
+    new G4PVPlacement(0, G4ThreeVector(0, -32.0*m, terrainZ(-32.0*m) + detSizeZ/2), fLogicDetectorIn1, "DetectorIn1", logicWorld, false, 0, true);
 
     fLogicDetectorIn2 = new G4LogicalVolume(solidDetector, scintillator, "DetectorIn2");
-    new G4PVPlacement(0, G4ThreeVector(0, -30.0*m, detSizeZ/2), fLogicDetectorIn2, "DetectorIn2", logicWorld, false, 0, true);
+    new G4PVPlacement(0, G4ThreeVector(0, -30.0*m, terrainZ(-30.0*m) + detSizeZ/2), fLogicDetectorIn2, "DetectorIn2", logicWorld, false, 0, true);
 
     // OUTGOING FLANK (+Y side, beyond +26.5m)
     fLogicDetectorOut1 = new G4LogicalVolume(solidDetector, scintillator, "DetectorOut1");
-    new G4PVPlacement(0, G4ThreeVector(0, 30.0*m, detSizeZ/2), fLogicDetectorOut1, "DetectorOut1", logicWorld, false, 0, true);
+    new G4PVPlacement(0, G4ThreeVector(0, 30.0*m, terrainZ(30.0*m) + detSizeZ/2), fLogicDetectorOut1, "DetectorOut1", logicWorld, false, 0, true);
 
     fLogicDetectorOut2 = new G4LogicalVolume(solidDetector, scintillator, "DetectorOut2");
-    new G4PVPlacement(0, G4ThreeVector(0, 32.0*m, detSizeZ/2), fLogicDetectorOut2, "DetectorOut2", logicWorld, false, 0, true);
+    new G4PVPlacement(0, G4ThreeVector(0, 32.0*m, terrainZ(32.0*m) + detSizeZ/2), fLogicDetectorOut2, "DetectorOut2", logicWorld, false, 0, true);
 
     // -----------------------------------------------------
     // 6. Visual Attributes
