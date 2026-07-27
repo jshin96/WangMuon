@@ -1,6 +1,10 @@
 #include "SteppingAction.hh"
 #include "EventAction.hh"
 #include "G4Step.hh"
+#include "G4Track.hh"
+#include "G4ParticleDefinition.hh"
+#include "G4MuonMinus.hh"
+#include "G4MuonPlus.hh"
 
 SteppingAction::SteppingAction(EventAction* eventAction)
 : G4UserSteppingAction(), fEventAction(eventAction)
@@ -9,27 +13,26 @@ SteppingAction::SteppingAction(EventAction* eventAction)
 
 void SteppingAction::UserSteppingAction(const G4Step* step)
 {
-    // Get the volume of the current step
+    const auto* particle = step->GetTrack()->GetDefinition();
+    if (particle != G4MuonMinus::MuonMinusDefinition()
+        && particle != G4MuonPlus::MuonPlusDefinition()) return;
+    if (step->GetTrack()->GetParentID() != 0) return;
+    if (step->GetPreStepPoint()->GetStepStatus() != fGeomBoundary) return;
+
     auto volume = step->GetPreStepPoint()->GetTouchableHandle()->GetVolume();
     if (!volume) return;
 
-    G4String volName = volume->GetName();
+    const G4String volName = volume->GetName();
+    const auto position = step->GetPreStepPoint()->GetPosition();
+    const auto momentum = step->GetPreStepPoint()->GetMomentum();
+    const G4double radialDot = position.x() * momentum.x()
+                             + position.y() * momentum.y();
 
-    // Route the data based on which detector was hit
-    if (volName == "DetectorIn1") {
-        fEventAction->SetHitIn1(step->GetPreStepPoint()->GetPosition(),
-                                step->GetPreStepPoint()->GetMomentum());
-    } 
-    else if (volName == "DetectorIn2") {
-        fEventAction->SetHitIn2(step->GetPreStepPoint()->GetPosition(),
-                                step->GetPreStepPoint()->GetMomentum());
-    }
-    else if (volName == "DetectorOut1") {
-        fEventAction->SetHitOut1(step->GetPreStepPoint()->GetPosition(),
-                                 step->GetPreStepPoint()->GetMomentum());
-    }
-    else if (volName == "DetectorOut2") {
-        fEventAction->SetHitOut2(step->GetPreStepPoint()->GetPosition(),
-                                 step->GetPreStepPoint()->GetMomentum());
+    if (volName == "DetectorOuter") {
+        if (radialDot < 0.0) fEventAction->SetHitIn1(position, momentum);
+        else                 fEventAction->SetHitOut2(position, momentum);
+    } else if (volName == "DetectorInner") {
+        if (radialDot < 0.0) fEventAction->SetHitIn2(position, momentum);
+        else                 fEventAction->SetHitOut1(position, momentum);
     }
 }

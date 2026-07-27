@@ -21,8 +21,7 @@
 
 DetectorConstruction::DetectorConstruction()
 : G4VUserDetectorConstruction(),
-  fLogicDetectorIn1(nullptr), fLogicDetectorIn2(nullptr),
-  fLogicDetectorOut1(nullptr), fLogicDetectorOut2(nullptr)
+  fLogicDetectorInner(nullptr), fLogicDetectorOuter(nullptr)
 { }
 
 DetectorConstruction::~DetectorConstruction()
@@ -232,32 +231,73 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     new G4PVPlacement(nullptr, G4ThreeVector(), logicGround, "PhysGround", logicWorld, false, 0, true);
 
     // =================================================================
-    // 5. The Detectors (4 Layers on Y-Axis, flanking the 26.5m mound)
+    // 5. Full-2pi terrain-following detector shells
     // =================================================================
-    G4double detSizeX = 10.0 * m;  // 10m total width 
-    G4double detSizeZ = 10.0 * m;  // 10m total height
-    G4double detThickness = 1.0 * cm; 
-    
-    G4Box* solidDetector = new G4Box("DetectorShape", detSizeX/2, detThickness, detSizeZ/2);
+    // The lower edge varies smoothly as z=-tan(inclination)*y around the
+    // complete circumference.  This connects the uphill and downhill sides
+    // without a discontinuity, while each panel height remains global-Z.
+    constexpr G4double detectorHeight = 13.0*m;
+    constexpr G4double detectorThickness = 1.0*cm;
+    constexpr G4double innerRadius = 28.0*m;
+    constexpr G4double outerRadius = 29.0*m;
+    constexpr int detectorSegments = 192;
+    constexpr G4double pi = 3.14159265358979323846;
+    auto makeTiltedDetectorShell = [&](const G4String& name, G4double inner,
+                                       G4double outer) {
+        auto point = [&](G4double radius, int index, bool upper) {
+            const G4double phi = 2.0 * pi * index / detectorSegments;
+            const G4double x = radius * std::cos(phi);
+            const G4double y = radius * std::sin(phi);
+            return G4ThreeVector(x, y, -groundSlope * y
+                                 + (upper ? detectorHeight : 0.0));
+        };
+        auto* shell = new G4TessellatedSolid(name);
+        for (int index = 0; index < detectorSegments; ++index) {
+            const int next = (index + 1) % detectorSegments;
+            const auto innerLower = point(inner, index, false);
+            const auto innerLowerNext = point(inner, next, false);
+            const auto innerUpper = point(inner, index, true);
+            const auto innerUpperNext = point(inner, next, true);
+            const auto outerLower = point(outer, index, false);
+            const auto outerLowerNext = point(outer, next, false);
+            const auto outerUpper = point(outer, index, true);
+            const auto outerUpperNext = point(outer, next, true);
 
-    const auto terrainZ = [groundSlope](G4double y) { return -groundSlope * y; };
+            // Outer cylinder (outward normal), inner cylinder (inward normal),
+            // and smoothly sloped lower/upper annular faces.
+            shell->AddFacet(new G4TriangularFacet(
+                outerLower, outerLowerNext, outerUpperNext, ABSOLUTE));
+            shell->AddFacet(new G4TriangularFacet(
+                outerLower, outerUpperNext, outerUpper, ABSOLUTE));
+            shell->AddFacet(new G4TriangularFacet(
+                innerLower, innerUpperNext, innerLowerNext, ABSOLUTE));
+            shell->AddFacet(new G4TriangularFacet(
+                innerLower, innerUpper, innerUpperNext, ABSOLUTE));
+            shell->AddFacet(new G4TriangularFacet(
+                innerLower, outerLowerNext, outerLower, ABSOLUTE));
+            shell->AddFacet(new G4TriangularFacet(
+                innerLower, innerLowerNext, outerLowerNext, ABSOLUTE));
+            shell->AddFacet(new G4TriangularFacet(
+                innerUpper, outerUpper, outerUpperNext, ABSOLUTE));
+            shell->AddFacet(new G4TriangularFacet(
+                innerUpper, outerUpperNext, innerUpperNext, ABSOLUTE));
+        }
+        shell->SetSolidClosed(true);
+        return shell;
+    };
 
-    // The detector planes stay vertical in global Z, but their lower edges
-    // follow the local terrain.  A muon parallel to the terrain and passing
-    // through the room therefore remains inside both detector acceptances.
-    // INCOMING FLANK (-Y side, beyond -26.5m)
-    fLogicDetectorIn1 = new G4LogicalVolume(solidDetector, scintillator, "DetectorIn1");
-    new G4PVPlacement(0, G4ThreeVector(0, -32.0*m, terrainZ(-32.0*m) + detSizeZ/2), fLogicDetectorIn1, "DetectorIn1", logicWorld, false, 0, true);
-
-    fLogicDetectorIn2 = new G4LogicalVolume(solidDetector, scintillator, "DetectorIn2");
-    new G4PVPlacement(0, G4ThreeVector(0, -30.0*m, terrainZ(-30.0*m) + detSizeZ/2), fLogicDetectorIn2, "DetectorIn2", logicWorld, false, 0, true);
-
-    // OUTGOING FLANK (+Y side, beyond +26.5m)
-    fLogicDetectorOut1 = new G4LogicalVolume(solidDetector, scintillator, "DetectorOut1");
-    new G4PVPlacement(0, G4ThreeVector(0, 30.0*m, terrainZ(30.0*m) + detSizeZ/2), fLogicDetectorOut1, "DetectorOut1", logicWorld, false, 0, true);
-
-    fLogicDetectorOut2 = new G4LogicalVolume(solidDetector, scintillator, "DetectorOut2");
-    new G4PVPlacement(0, G4ThreeVector(0, 32.0*m, terrainZ(32.0*m) + detSizeZ/2), fLogicDetectorOut2, "DetectorOut2", logicWorld, false, 0, true);
+    fLogicDetectorInner = new G4LogicalVolume(
+        makeTiltedDetectorShell("TiltedDetectorInner", innerRadius,
+                                innerRadius + detectorThickness),
+        scintillator, "DetectorInner");
+    fLogicDetectorOuter = new G4LogicalVolume(
+        makeTiltedDetectorShell("TiltedDetectorOuter", outerRadius,
+                                outerRadius + detectorThickness),
+        scintillator, "DetectorOuter");
+    new G4PVPlacement(nullptr, G4ThreeVector(), fLogicDetectorInner,
+                      "DetectorInner", logicWorld, false, 0, true);
+    new G4PVPlacement(nullptr, G4ThreeVector(), fLogicDetectorOuter,
+                      "DetectorOuter", logicWorld, false, 0, true);
 
     // -----------------------------------------------------
     // 6. Visual Attributes
@@ -282,10 +322,8 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
     G4VisAttributes* detVis = new G4VisAttributes(G4Colour(0.0, 0.8, 1.0, 0.5)); // Cyan detectors
     detVis->SetForceSolid(true);
-    fLogicDetectorIn1->SetVisAttributes(detVis);
-    fLogicDetectorIn2->SetVisAttributes(detVis);
-    fLogicDetectorOut1->SetVisAttributes(detVis);
-    fLogicDetectorOut2->SetVisAttributes(detVis);
+    fLogicDetectorInner->SetVisAttributes(detVis);
+    fLogicDetectorOuter->SetVisAttributes(detVis);
 
     return physWorld;
 }
