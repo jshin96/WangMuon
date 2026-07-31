@@ -185,10 +185,22 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
     new G4PVPlacement(nullptr, G4ThreeVector(0, 0, 0), logicRoom, "PhysRoom", logicRockWall, false, 0, true);
 
-    // The room is vertical in global Z and referenced to the terrain height
-    // at its centre (x=y=0), retaining 2 m of mound below the outer wall.
-    G4double wallCenterZ = roomZ + wallThickness;
-    new G4PVPlacement(nullptr, G4ThreeVector(0, 0, wallCenterZ), logicRockWall, "PhysRockWall", logicMound, false, 0, true);
+    // Keep the room level, but lower it until the outer wall is just above
+    // the highest inclined-ground point beneath its footprint. A level room
+    // cannot touch the sloped ground everywhere without intersecting it.
+    const G4double wallHalfY = roomY/2 + wallThickness;
+    const G4double wallHalfZ = roomZ/2 + wallThickness;
+    const G4double highestGroundUnderWall =
+        std::abs(groundSlope) * wallHalfY;
+    constexpr G4double roomGroundClearance = 1.0*mm;
+    const G4double wallCenterZ =
+        highestGroundUnderWall + roomGroundClearance + wallHalfZ;
+    new G4PVPlacement(nullptr, G4ThreeVector(0, 0, wallCenterZ),
+                      logicRockWall, "PhysRockWall", logicMound,
+                      false, 0, true);
+    G4cout << "Room outer-wall bottom Z="
+           << (wallCenterZ - wallHalfZ)/m
+           << " m (lowest non-overlapping level placement)" << G4endl;
 
     // =================================================================
     // 4. The Ground
