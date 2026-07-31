@@ -26,7 +26,8 @@ void EventAction::EndOfEventAction(const G4Event* event)
     if (fHitIn1 && fHitIn2 && fHitOut1 && fHitOut2) {
         
         auto analysisManager = G4AnalysisManager::Instance();
-        int col = 0;
+        // Column 0 stores the EcoMug trial count from PrimaryGeneratorAction.
+        int col = 1;
 
         analysisManager->FillNtupleIColumn(col++, event->GetEventID());
         

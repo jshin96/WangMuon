@@ -20,12 +20,12 @@ void ActionInitialization::BuildForMaster() const
 // This is where the worker threads get their action classes
 void ActionInitialization::Build() const
 {
-    // 1. Particle Gun
-    SetUserAction(new PrimaryGeneratorAction());
-
-    // 2. Run Action (handles the ROOT file setup)
+    // 1. Run Action owns generation-efficiency counters.
     RunAction* runAction = new RunAction();
     SetUserAction(runAction);
+
+    // 2. Particle Gun reports each requested primary to RunAction.
+    SetUserAction(new PrimaryGeneratorAction(runAction));
 
     // 3. Event Action (handles the coincidence trigger)
     EventAction* eventAction = new EventAction();

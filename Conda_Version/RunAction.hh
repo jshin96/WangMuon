@@ -14,6 +14,16 @@ class RunAction : public G4UserRunAction
 
     virtual void BeginOfRunAction(const G4Run* run);
     virtual void   EndOfRunAction(const G4Run* run);
+
+    void RecordPrimaryGeneration(G4int eventID, G4long trials,
+                                 G4bool accepted);
+
+  private:
+    G4long fGeneratedEvents = 0;
+    G4long fAcceptedPrimaries = 0;
+    G4long fAbortedPrimaries = 0;
+    G4long fTotalTrials = 0;
+    G4long fMaximumTrials = 0;
 };
 
 #endif
