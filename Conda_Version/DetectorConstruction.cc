@@ -5,7 +5,10 @@
 #include "G4Material.hh"
 #include "G4Element.hh"
 #include "G4Box.hh"
+#include "G4Tubs.hh"
 #include "G4Ellipsoid.hh"
+#include "G4RotationMatrix.hh"
+#include "G4Transform3D.hh"
 #include "G4TessellatedSolid.hh"
 #include "G4TriangularFacet.hh"
 #include "G4VSolid.hh"
@@ -231,73 +234,42 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     new G4PVPlacement(nullptr, G4ThreeVector(), logicGround, "PhysGround", logicWorld, false, 0, true);
 
     // =================================================================
-    // 5. Full-2pi terrain-following detector shells
+    // 5. Full-2pi rigid detector cylinders
     // =================================================================
-    // The lower edge varies smoothly as z=-tan(inclination)*y around the
-    // complete circumference.  This connects the uphill and downhill sides
-    // without a discontinuity, while each panel height remains global-Z.
+    // Use two ordinary cylindrical shells with their common axis normal to
+    // the inclined ground. Their lower caps lie in the ground plane and the
+    // tracking layers are separated by 30 cm in radius.
     constexpr G4double detectorHeight = 13.0*m;
     constexpr G4double detectorThickness = 1.0*cm;
     constexpr G4double innerRadius = 28.0*m;
-    constexpr G4double outerRadius = 29.0*m;
-    constexpr int detectorSegments = 192;
-    constexpr G4double pi = 3.14159265358979323846;
-    auto makeTiltedDetectorShell = [&](const G4String& name, G4double inner,
-                                       G4double outer) {
-        auto point = [&](G4double radius, int index, bool upper) {
-            const G4double phi = 2.0 * pi * index / detectorSegments;
-            const G4double x = radius * std::cos(phi);
-            const G4double y = radius * std::sin(phi);
-            return G4ThreeVector(x, y, -groundSlope * y
-                                 + (upper ? detectorHeight : 0.0));
-        };
-        auto* shell = new G4TessellatedSolid(name);
-        for (int index = 0; index < detectorSegments; ++index) {
-            const int next = (index + 1) % detectorSegments;
-            const auto innerLower = point(inner, index, false);
-            const auto innerLowerNext = point(inner, next, false);
-            const auto innerUpper = point(inner, index, true);
-            const auto innerUpperNext = point(inner, next, true);
-            const auto outerLower = point(outer, index, false);
-            const auto outerLowerNext = point(outer, next, false);
-            const auto outerUpper = point(outer, index, true);
-            const auto outerUpperNext = point(outer, next, true);
-
-            // Outer cylinder (outward normal), inner cylinder (inward normal),
-            // and smoothly sloped lower/upper annular faces.
-            shell->AddFacet(new G4TriangularFacet(
-                outerLower, outerLowerNext, outerUpperNext, ABSOLUTE));
-            shell->AddFacet(new G4TriangularFacet(
-                outerLower, outerUpperNext, outerUpper, ABSOLUTE));
-            shell->AddFacet(new G4TriangularFacet(
-                innerLower, innerUpperNext, innerLowerNext, ABSOLUTE));
-            shell->AddFacet(new G4TriangularFacet(
-                innerLower, innerUpper, innerUpperNext, ABSOLUTE));
-            shell->AddFacet(new G4TriangularFacet(
-                innerLower, outerLowerNext, outerLower, ABSOLUTE));
-            shell->AddFacet(new G4TriangularFacet(
-                innerLower, innerLowerNext, outerLowerNext, ABSOLUTE));
-            shell->AddFacet(new G4TriangularFacet(
-                innerUpper, outerUpper, outerUpperNext, ABSOLUTE));
-            shell->AddFacet(new G4TriangularFacet(
-                innerUpper, outerUpperNext, innerUpperNext, ABSOLUTE));
-        }
-        shell->SetSolidClosed(true);
-        return shell;
-    };
+    constexpr G4double detectorLayerSpacing = 30.0*cm;
+    constexpr G4double outerRadius = innerRadius + detectorLayerSpacing;
 
     fLogicDetectorInner = new G4LogicalVolume(
-        makeTiltedDetectorShell("TiltedDetectorInner", innerRadius,
-                                innerRadius + detectorThickness),
+        new G4Tubs("TiltedDetectorInner", innerRadius,
+                   innerRadius + detectorThickness, detectorHeight/2.0,
+                   0.0, CLHEP::twopi),
         scintillator, "DetectorInner");
     fLogicDetectorOuter = new G4LogicalVolume(
-        makeTiltedDetectorShell("TiltedDetectorOuter", outerRadius,
-                                outerRadius + detectorThickness),
+        new G4Tubs("TiltedDetectorOuter", outerRadius,
+                   outerRadius + detectorThickness, detectorHeight/2.0,
+                   0.0, CLHEP::twopi),
         scintillator, "DetectorOuter");
-    new G4PVPlacement(nullptr, G4ThreeVector(), fLogicDetectorInner,
+
+    auto* detectorRotation = new G4RotationMatrix();
+    detectorRotation->rotateX(-groundIncline);
+    const G4ThreeVector detectorAxis =
+        (*detectorRotation) * G4ThreeVector(0., 0., 1.);
+    const G4ThreeVector detectorCentre = detectorAxis * (detectorHeight/2.0);
+    const G4Transform3D detectorTransform(*detectorRotation, detectorCentre);
+    new G4PVPlacement(detectorTransform, fLogicDetectorInner,
                       "DetectorInner", logicWorld, false, 0, true);
-    new G4PVPlacement(nullptr, G4ThreeVector(), fLogicDetectorOuter,
+    new G4PVPlacement(detectorTransform, fLogicDetectorOuter,
                       "DetectorOuter", logicWorld, false, 0, true);
+    G4cout << "Detector cylinders: inclination=" << groundInclineDeg
+           << " deg, inner/outer layer radii=" << innerRadius/m << "/"
+           << outerRadius/m << " m, radial layer spacing="
+           << detectorLayerSpacing/cm << " cm" << G4endl;
 
     // -----------------------------------------------------
     // 6. Visual Attributes

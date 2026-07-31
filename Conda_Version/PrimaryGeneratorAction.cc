@@ -3,6 +3,8 @@
 #include "G4ParticleTable.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4Event.hh"
+#include <cmath>
+#include <cstdlib>
 
 PrimaryGeneratorAction::PrimaryGeneratorAction() {
     fParticleGun = new G4ParticleGun(1);
@@ -54,10 +56,24 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent) {
     ));
     */
 
-    // Testing with only +Y direction muons 
-    G4ThreeVector pos(((G4UniformRand()*15)-7.5)*m,-74.95*m,((G4UniformRand()*15))*m);
+    // Testing with only local +Y direction muons. Rotate the source position
+    // and direction with the rigid detector cylinder so the ray remains
+    // parallel to the inclined ground and can cross all four detector layers.
+    const char* inclineSetting = std::getenv("MOUND_GROUND_INCLINE_DEG");
+    const G4double inclineDeg =
+        inclineSetting ? std::atof(inclineSetting) : 15.0;
+    const G4double incline = inclineDeg * CLHEP::pi / 180.0;
+    const G4double inclineCos = std::cos(incline);
+    const G4double inclineSin = std::sin(incline);
+    const G4double localX = ((G4UniformRand()*15.0)-7.5)*m;
+    const G4double localY = -74.95*m;
+    const G4double axialHeight = G4UniformRand()*13.0*m;
+    G4ThreeVector pos(localX,
+                      inclineCos*localY + inclineSin*axialHeight,
+                      -inclineSin*localY + inclineCos*axialHeight);
     fParticleGun->SetParticlePosition(pos);
-    fParticleGun->SetParticleMomentumDirection(G4ThreeVector(0., 1., 0.));
+    fParticleGun->SetParticleMomentumDirection(
+        G4ThreeVector(0., inclineCos, -inclineSin));
     
     // Set the kinetic energy
     // (For highly relativistic muons, p_tot ~ Kinetic Energy)

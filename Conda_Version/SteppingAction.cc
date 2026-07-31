@@ -2,6 +2,7 @@
 #include "EventAction.hh"
 #include "G4Step.hh"
 #include "G4Track.hh"
+#include "G4TouchableHistory.hh"
 #include "G4ParticleDefinition.hh"
 #include "G4MuonMinus.hh"
 #include "G4MuonPlus.hh"
@@ -25,8 +26,16 @@ void SteppingAction::UserSteppingAction(const G4Step* step)
     const G4String volName = volume->GetName();
     const auto position = step->GetPreStepPoint()->GetPosition();
     const auto momentum = step->GetPreStepPoint()->GetMomentum();
-    const G4double radialDot = position.x() * momentum.x()
-                             + position.y() * momentum.y();
+    const auto& globalToLocal =
+        step->GetPreStepPoint()->GetTouchableHandle()
+            ->GetHistory()->GetTopTransform();
+    const G4ThreeVector localPosition =
+        globalToLocal.TransformPoint(position);
+    const G4ThreeVector localMomentum =
+        globalToLocal.TransformAxis(momentum);
+    const G4double radialDot =
+        localPosition.x() * localMomentum.x()
+        + localPosition.y() * localMomentum.y();
 
     if (volName == "DetectorOuter") {
         if (radialDot < 0.0) fEventAction->SetHitIn1(position, momentum);
