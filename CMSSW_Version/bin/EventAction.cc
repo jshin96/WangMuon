@@ -1,6 +1,10 @@
+#include <limits>
 #include "EventAction.hh"
 #include "G4Event.hh"
 #include "G4AnalysisManager.hh"
+#include "G4RunManager.hh"
+#include "RunAction.hh"
+
 
 EventAction::EventAction()
 : G4UserEventAction(),
@@ -18,16 +22,33 @@ void EventAction::BeginOfEventAction(const G4Event*)
     fHitIn2 = false;
     fHitOut1 = false;
     fHitOut2 = false;
+    fHitMound = false;
+    fHitRoom = false;
+
+
+    const G4double missing = std::numeric_limits<G4double>::quiet_NaN();
+
+    fPosOut1 = G4ThreeVector(missing, missing, missing);
+    fMomOut1 = G4ThreeVector(missing, missing, missing);
+
+    fPosOut2 = G4ThreeVector(missing, missing, missing);
+    fMomOut2 = G4ThreeVector(missing, missing, missing);
 }
+
 
 void EventAction::EndOfEventAction(const G4Event* event)
 {
     // Hardware Trigger: Only record muons that survived the entire journey
-    if (fHitIn1 && fHitIn2 && fHitOut1 && fHitOut2) {
-        
+//    if (fHitIn1 && fHitIn2 && fHitOut1 && fHitOut2) {
+    if (fHitIn1 && fHitIn2) {
+        int trajectoryFlag = 0;
         auto analysisManager = G4AnalysisManager::Instance();
-        int col = 0;
-
+        int col = 1;
+        if (fHitRoom) {
+            trajectoryFlag = 2; // 2 = Room + Wall (Takes priority)
+        } else if (fHitMound) {
+            trajectoryFlag = 1; // 1 = Mound Only
+        }
         analysisManager->FillNtupleIColumn(col++, event->GetEventID());
         
         // In 1
@@ -61,6 +82,10 @@ void EventAction::EndOfEventAction(const G4Event* event)
         analysisManager->FillNtupleDColumn(col++, fMomOut2.x());
         analysisManager->FillNtupleDColumn(col++, fMomOut2.y());
         analysisManager->FillNtupleDColumn(col++, fMomOut2.z());
+
+        analysisManager->FillNtupleIColumn(col++, trajectoryFlag);
+        analysisManager->FillNtupleIColumn(col++, fHitOut1 ? 1 : 0);
+        analysisManager->FillNtupleIColumn(col++, fHitOut2 ? 1 : 0);
 
         analysisManager->AddNtupleRow();
     }

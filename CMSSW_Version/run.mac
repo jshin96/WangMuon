@@ -1,5 +1,8 @@
-# Initialize the physics and geometry
-/run/initialize
+# main.cc initializes the physics and geometry before executing this macro.
+# Do not issue a second /run/initialize here: Geant4 then stops processing the
+# macro before it reaches /run/beamOn, leaving no ROOT output.
 
-# Fire 64,140 cosmic rays (flux of cosmic muon in 0.1 s with 1/min/cm^2 through 35m radius sphere)
-/run/beamOn 200000
+# The source is conditioned on the uphill/downhill detector window configured
+# by run_sim_job.sh. It preserves EcoMug draws inside that proposal window but
+# is not an unconditioned full-sky absolute-flux simulation.
+/run/beamOn 5000

@@ -20,6 +20,8 @@ class EventAction : public G4UserEventAction
     void SetHitOut1(G4ThreeVector pos, G4ThreeVector mom) { fPosOut1 = pos; fMomOut1 = mom; fHitOut1 = true; }
     void SetHitOut2(G4ThreeVector pos, G4ThreeVector mom) { fPosOut2 = pos; fMomOut2 = mom; fHitOut2 = true; }
 
+    void AddHitMound() { fHitMound = true; }
+    void AddHitRoom()  { fHitRoom = true; }
   private:
     G4ThreeVector fPosIn1, fMomIn1;
     G4ThreeVector fPosIn2, fMomIn2;
@@ -27,6 +29,8 @@ class EventAction : public G4UserEventAction
     G4ThreeVector fPosOut2, fMomOut2;
     
     G4bool fHitIn1, fHitIn2, fHitOut1, fHitOut2;
+    bool fHitMound;
+    bool fHitRoom;
 };
 
 #endif
