@@ -1,5 +1,7 @@
 #include "G4RunManager.hh"
 #include "G4UImanager.hh"
+#include "G4UIExecutive.hh"
+#include "G4VisExecutive.hh"
 #include "FTFP_BERT_HP.hh" // Geant4's pre-packaged physics list
 #include "G4RunManagerFactory.hh"
 #include "DetectorConstruction.hh"
@@ -20,17 +22,27 @@ int main(int argc, char** argv) {
 
     runManager->Initialize();
 
-
-
     // 3. Get the pointer to the User Interface manager (To read the macro)
     G4UImanager* UImanager = G4UImanager::GetUIpointer();
 
-    // 4. Force Batch Mode (Condor only)
+    // 4. Batch mode for production; interactive UI with a drawn geometry when
+    // no macro is supplied.
     if (argc > 1) {
         G4String command = "/control/execute ";
         G4String fileName = argv[1];
         UImanager->ApplyCommand(command + fileName);
     } else {
+        // Never construct a visualisation manager in batch/Condor mode.
+        // The available interactive driver is selected by this Geant4 build.
+        auto* visManager = new G4VisExecutive;
+        visManager->Initialize();
+        auto* ui = new G4UIExecutive(argc, argv);
+        UImanager->ApplyCommand("/vis/open OGL");
+        UImanager->ApplyCommand("/vis/drawVolume");
+        UImanager->ApplyCommand("/vis/viewer/set/autoRefresh true");
+        ui->SessionStart();
+        delete ui;
+        delete visManager;
     }
 
 
@@ -39,5 +51,3 @@ int main(int argc, char** argv) {
     return 0;
 
 } 
-
-

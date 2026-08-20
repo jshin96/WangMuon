@@ -16,16 +16,19 @@ public:
     void GeneratePrimaries(G4Event* anEvent) override;
 
 private:
+    struct FlatPlane {
+        G4double width;
+        G4double height;
+        G4double y;
+        G4double z;
+    };
+
     G4ParticleGun* fParticleGun;
     EcoMug* fEcoMug;
     RunAction* fRunAction;
     G4double fGroundSlope;
-    G4double fInclineCos;
-    G4double fInclineSin;
-    G4double fWindowMinDeg;
-    G4double fWindowMaxDeg;
-    G4double fAxialMin;
-    G4double fAxialMax;
+    FlatPlane fIn1;
+    FlatPlane fIn2;
     G4long fMaximumAttempts;
 };
 

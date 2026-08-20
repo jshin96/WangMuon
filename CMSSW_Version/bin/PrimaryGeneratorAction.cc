@@ -16,16 +16,7 @@
 #include <string>
 
 namespace {
-constexpr G4double kInnerDetectorRadius = 23.0*m;
-constexpr G4double kDetectorLayerSpacing = 400.0*cm;
-constexpr G4double kOuterDetectorRadius =
-    kInnerDetectorRadius + kDetectorLayerSpacing;
-constexpr G4double kDetectorThickness = 1.0*cm;
-constexpr G4double kPhysicalDetectorHeight = 13.0*m;
 constexpr G4double kMoundRadius = 20.0*m;
-constexpr G4double kRadialSafetyMargin = 2.0*m;
-constexpr G4double kSourceRadius =
-    kOuterDetectorRadius + kDetectorThickness + kRadialSafetyMargin;
 constexpr G4double kPi = CLHEP::pi;
 
 G4double ReadFiniteEnvironmentDouble(const char* name, G4double fallback) {
@@ -39,10 +30,9 @@ G4double ReadFiniteEnvironmentDouble(const char* name, G4double fallback) {
         }
         return value;
     } catch (const std::exception&) {
-        const std::string message = std::string(name)
-            + " must be a finite number.";
-        G4Exception("PrimaryGeneratorAction", "InvalidGeneratorSetting",
-                    FatalException, message.c_str());
+        const std::string message = std::string(name) + " must be a finite number.";
+        G4Exception("PrimaryGeneratorAction", "InvalidGeneratorSetting", FatalException,
+                    message.c_str());
         return fallback;
     }
 }
@@ -59,166 +49,101 @@ G4long ReadMaximumAttempts() {
         }
         return static_cast<G4long>(value);
     } catch (const std::exception&) {
-        G4Exception("PrimaryGeneratorAction", "InvalidMaximumAttempts",
-                    FatalException,
+        G4Exception("PrimaryGeneratorAction", "InvalidMaximumAttempts", FatalException,
                     "MOUND_MAX_GENERATION_ATTEMPTS must be a positive integer.");
         return kDefaultMaximumAttempts;
     }
 }
-
-G4double FoldOpposingPairAngleDeg(G4double angleDeg) {
-    while (angleDeg >= 90.0) angleDeg -= 180.0;
-    while (angleDeg < -90.0) angleDeg += 180.0;
-    return angleDeg;
-}
-
-struct ShellCrossing {
-    G4double entryParameter = 0.0;
-    G4double exitParameter = 0.0;
-    G4double entryX = 0.0;
-    G4double entryY = 0.0;
-    G4double exitX = 0.0;
-    G4double exitY = 0.0;
-    G4double entryAxial = 0.0;
-    G4double exitAxial = 0.0;
-    G4double entryPairAngleDeg = 0.0;
-    G4double exitPairAngleDeg = 0.0;
-};
-
-bool IntersectDetectorShell(G4double radius,
-                            G4double posX, G4double posY,
-                            G4double posAxial,
-                            G4double dirX, G4double dirY,
-                            G4double dirAxial,
-                            ShellCrossing& crossing) {
-    const G4double a = dirX*dirX + dirY*dirY;
-    if (a <= 1.e-18) return false;
-    const G4double b = 2.0*(posX*dirX + posY*dirY);
-    const G4double c = posX*posX + posY*posY - radius*radius;
-    const G4double discriminant = b*b - 4.0*a*c;
-    if (discriminant <= 0.0) return false;
-
-    const G4double root = std::sqrt(discriminant);
-    crossing.entryParameter = (-b - root)/(2.0*a);
-    crossing.exitParameter = (-b + root)/(2.0*a);
-    if (crossing.entryParameter <= 0.0 || crossing.exitParameter <= 0.0) {
-        return false;
-    }
-
-    crossing.entryX = posX + crossing.entryParameter*dirX;
-    crossing.entryY = posY + crossing.entryParameter*dirY;
-    crossing.exitX = posX + crossing.exitParameter*dirX;
-    crossing.exitY = posY + crossing.exitParameter*dirY;
-    crossing.entryAxial =
-        posAxial + crossing.entryParameter*dirAxial;
-    crossing.exitAxial =
-        posAxial + crossing.exitParameter*dirAxial;
-    crossing.entryPairAngleDeg = FoldOpposingPairAngleDeg(
-        std::atan2(crossing.entryX, crossing.entryY)*180.0/kPi);
-    crossing.exitPairAngleDeg = FoldOpposingPairAngleDeg(
-        std::atan2(crossing.exitX, crossing.exitY)*180.0/kPi);
-    return true;
-}
 } // namespace
 
 PrimaryGeneratorAction::PrimaryGeneratorAction(RunAction* runAction)
-    : fParticleGun(new G4ParticleGun(1)),
-      fEcoMug(new EcoMug()),
-      fRunAction(runAction),
-      fGroundSlope(0.0),
-      fInclineCos(1.0),
-      fInclineSin(0.0),
-      fWindowMinDeg(-30.0),
-      fWindowMaxDeg(30.0),
-      fAxialMin(0.0),
-      fAxialMax(kPhysicalDetectorHeight),
+    : fParticleGun(new G4ParticleGun(1)), fEcoMug(new EcoMug()),
+      fRunAction(runAction), fGroundSlope(0.0), fIn1{}, fIn2{},
       fMaximumAttempts(ReadMaximumAttempts()) {
     const G4double groundInclineDeg = ReadFiniteEnvironmentDouble(
-        "MOUND_GROUND_INCLINE_DEG", 0.0);
+        "MOUND_GROUND_INCLINE_DEG", 15.0);
     if (std::abs(groundInclineDeg) >= 30.0) {
-        G4Exception("PrimaryGeneratorAction", "InvalidGroundIncline",
-                    FatalException,
+        G4Exception("PrimaryGeneratorAction", "InvalidGroundIncline", FatalException,
                     "MOUND_GROUND_INCLINE_DEG must be between -30 and 30 degrees.");
     }
-    const G4double groundIncline = groundInclineDeg*kPi/180.0;
-    fGroundSlope = std::tan(groundIncline);
-    fInclineCos = std::cos(groundIncline);
-    fInclineSin = std::sin(groundIncline);
-
-    fWindowMinDeg = ReadFiniteEnvironmentDouble(
-        "MOUND_DETECTOR_WINDOW_MIN_DEG", -30.0);
-    fWindowMaxDeg = ReadFiniteEnvironmentDouble(
-        "MOUND_DETECTOR_WINDOW_MAX_DEG", 30.0);
-    if (fWindowMinDeg <= -90.0 || fWindowMaxDeg >= 90.0
-        || fWindowMinDeg >= fWindowMaxDeg) {
-        G4Exception("PrimaryGeneratorAction", "InvalidDetectorWindow",
-                    FatalException,
-                    "Detector-window angles must satisfy -90 < min < max < 90 degrees.");
-    }
-
-    const G4double windowHeightM = ReadFiniteEnvironmentDouble(
-        "MOUND_DETECTOR_WINDOW_HEIGHT_M", 13.0);
-    const G4double windowElevationM = ReadFiniteEnvironmentDouble(
-        "MOUND_DETECTOR_WINDOW_ELEVATION_M", 6.5);
-    if (windowHeightM <= 0.0) {
-        G4Exception("PrimaryGeneratorAction", "InvalidDetectorWindowHeight",
-                    FatalException,
-                    "MOUND_DETECTOR_WINDOW_HEIGHT_M must be positive.");
-    }
-    fAxialMin = (windowElevationM - 0.5*windowHeightM)*m;
-    fAxialMax = (windowElevationM + 0.5*windowHeightM)*m;
-    if (fAxialMin < 0.0 || fAxialMax > kPhysicalDetectorHeight
-        || fAxialMin >= fAxialMax) {
-        G4Exception("PrimaryGeneratorAction", "DetectorWindowOutsideShell",
-                    FatalException,
-                    "The detector-window elevation/height must lie inside the 0--13 m physical cylinder.");
+    const G4double groundSlope = std::tan(groundInclineDeg*kPi/180.0);
+    fGroundSlope = groundSlope;
+    const auto readPlane = [groundSlope](const char* plane) {
+        const std::string prefix = std::string("MOUND_GEM_") + plane;
+        const G4double y = ReadFiniteEnvironmentDouble(
+            (prefix + "_Y_M").c_str(), 0.0)*m;
+        const G4double elevation = ReadFiniteEnvironmentDouble(
+            (prefix + "_Z_M").c_str(), 1.0)*m;
+        return FlatPlane{
+            ReadFiniteEnvironmentDouble((prefix + "_WIDTH_M").c_str(), 1.0)*m,
+            ReadFiniteEnvironmentDouble((prefix + "_HEIGHT_M").c_str(), 1.0)*m,
+            y, elevation - groundSlope*y};
+    };
+    fIn1 = readPlane("IN1");
+    fIn2 = readPlane("IN2");
+    if (fIn1.width <= 0.0 || fIn1.height <= 0.0 || fIn2.width <= 0.0
+        || fIn2.height <= 0.0 || fIn1.y >= 0.0 || fIn2.y <= fIn1.y) {
+        G4Exception("PrimaryGeneratorAction", "InvalidIncomingGEMLayout", FatalException,
+                    "IN1/IN2 widths and heights must be positive; IN1 must be on -Y and upstream of IN2.");
     }
 
     const G4double minimumMomentumGeV = ReadFiniteEnvironmentDouble(
         "MOUND_MUON_MIN_MOMENTUM_GEV", 10.0);
     const G4double maximumMomentumGeV = ReadFiniteEnvironmentDouble(
         "MOUND_MUON_MAX_MOMENTUM_GEV", 100.0);
-    if (minimumMomentumGeV <= 0.0
-        || minimumMomentumGeV >= maximumMomentumGeV) {
-        G4Exception("PrimaryGeneratorAction", "InvalidMomentumWindow",
-                    FatalException,
+    if (minimumMomentumGeV <= 0.0 || minimumMomentumGeV >= maximumMomentumGeV) {
+        G4Exception("PrimaryGeneratorAction", "InvalidMomentumWindow", FatalException,
                     "Muon momenta must satisfy 0 < minimum < maximum.");
+    }
+
+    const G4double sourceClearance = ReadFiniteEnvironmentDouble(
+        "MOUND_SOURCE_CLEARANCE_M", 2.0)*m;
+    const G4double sourceElevationMin = ReadFiniteEnvironmentDouble(
+        "MOUND_SOURCE_Z_MIN_M", 1.0)*m;
+    const G4double sourceElevationMax = ReadFiniteEnvironmentDouble(
+        "MOUND_SOURCE_Z_MAX_M", 5.0)*m;
+    const G4double sourceArcHalfWidthDeg = ReadFiniteEnvironmentDouble(
+        "MOUND_SOURCE_UPSTREAM_ARC_HALF_WIDTH_DEG", 20.0);
+    const G4double sourceDirectionHalfWidthDeg = ReadFiniteEnvironmentDouble(
+        "MOUND_SOURCE_DIRECTION_PHI_HALF_WIDTH_DEG", 30.0);
+    if (sourceClearance <= 0.0 || sourceElevationMax <= sourceElevationMin
+        || sourceArcHalfWidthDeg <= 0.0 || sourceArcHalfWidthDeg >= 90.0
+        || sourceDirectionHalfWidthDeg <= 0.0 || sourceDirectionHalfWidthDeg >= 90.0) {
+        G4Exception("PrimaryGeneratorAction", "InvalidFlatSource", FatalException,
+                    "Source clearance must be positive, Z max must exceed Z min, and source angular half-widths must be between 0 and 90 degrees.");
     }
 
     fParticleGun->SetParticleDefinition(
         G4ParticleTable::GetParticleTable()->FindParticle("mu-"));
-
     fEcoMug->SetUseCylinder();
-    fEcoMug->SetCylinderRadius(kSourceRadius);
-    // EcoMug samples vertical height above z_ground. In the tilted-cylinder
-    // frame, axial height is cos(incline) times that vertical height.
-    const G4double sourceVerticalMin = fAxialMin/fInclineCos;
-    const G4double sourceVerticalMax = fAxialMax/fInclineCos;
-    fEcoMug->SetCylinderHeight(sourceVerticalMax - sourceVerticalMin);
+    fEcoMug->SetCylinderRadius(std::abs(fIn1.y) + sourceClearance);
+    // EcoMug samples source Z as elevation above local ground.  Each sampled
+    // point is later translated by its own inclined-ground height.
+    fEcoMug->SetCylinderHeight(sourceElevationMax - sourceElevationMin);
     fEcoMug->SetCylinderCenterPosition(
-        {{0.0, 0.0, 0.5*(sourceVerticalMin + sourceVerticalMax)}});
+        {{0.0, 0.0, 0.5*(sourceElevationMin + sourceElevationMax)}});
 
-    // EcoMug position phi is measured counter-clockwise from global +X.
-    // A downhill detector angle alpha measured from +Y toward +X has an
-    // uphill source point at phi = 270 deg - alpha.
-    const G4double sourcePhiMinDeg = 270.0 - fWindowMaxDeg;
-    const G4double sourcePhiMaxDeg = 270.0 - fWindowMinDeg;
+    // EcoMug position phi is counter-clockwise from +X; -Y is 270 degrees.
+    const G4double sourcePhiMinDeg = 270.0 - sourceArcHalfWidthDeg;
+    const G4double sourcePhiMaxDeg = 270.0 + sourceArcHalfWidthDeg;
     fEcoMug->SetCylinderMinPositionPhi(sourcePhiMinDeg*kPi/180.0);
     fEcoMug->SetCylinderMaxPositionPhi(sourcePhiMaxDeg*kPi/180.0);
-
+    // Generated directions use phi=90 degrees for +Y.  Restricting this
+    // proposal cone avoids drawing directions that point away from IN1.
+    fEcoMug->SetMinimumPhi((90.0 - sourceDirectionHalfWidthDeg)*kPi/180.0);
+    fEcoMug->SetMaximumPhi((90.0 + sourceDirectionHalfWidthDeg)*kPi/180.0);
     fEcoMug->SetMinimumMomentum(minimumMomentumGeV);
     fEcoMug->SetMaximumMomentum(maximumMomentumGeV);
     fEcoMug->SetMinimumTheta(70.0*kPi/180.0);
     fEcoMug->SetMaximumTheta(80.0*kPi/180.0);
 
-    G4cout << "CONDITIONAL_PRIMARY_CONFIGURATION downhill_pair_window_deg=["
-           << fWindowMinDeg << "," << fWindowMaxDeg << "]"
-           << " uphill_source_phi_deg=[" << sourcePhiMinDeg << ","
-           << sourcePhiMaxDeg << "]"
-           << " axial_window_m=[" << fAxialMin/m << "," << fAxialMax/m
-           << "] momentum_GeV=[" << minimumMomentumGeV << ","
-           << maximumMomentumGeV << "] max_attempts=" << fMaximumAttempts
-           << G4endl;
+    G4cout << "CONDITIONAL_PRIMARY_CONFIGURATION source_upstream_phi_deg=["
+           << sourcePhiMinDeg << "," << sourcePhiMaxDeg << "] source_elevation_m=["
+           << sourceElevationMin/m << "," << sourceElevationMax/m << "] in1_yz_m=["
+           << fIn1.y/m << "," << fIn1.z/m << "] in2_yz_m=["
+           << fIn2.y/m << "," << fIn2.z/m << "] momentum_GeV=["
+           << minimumMomentumGeV << "," << maximumMomentumGeV
+           << "] max_attempts=" << fMaximumAttempts << G4endl;
 }
 
 PrimaryGeneratorAction::~PrimaryGeneratorAction() {
@@ -229,99 +154,55 @@ PrimaryGeneratorAction::~PrimaryGeneratorAction() {
 void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event) {
     G4long trials = 0;
     bool accepted = false;
-    G4ThreeVector acceptedPosition;
-    G4ThreeVector acceptedDirection;
+    G4ThreeVector acceptedPosition, acceptedDirection, acceptedIn1Hit, acceptedIn2Hit;
     G4double acceptedMomentumGeV = 0.0;
-    ShellCrossing acceptedOuterCrossing;
 
-    const auto insideWindow = [&](const ShellCrossing& crossing) {
-        const bool correctSides = crossing.entryY < 0.0
-                               && crossing.exitY > 0.0;
-        const bool axialAccepted =
-            crossing.entryAxial >= fAxialMin
-            && crossing.entryAxial <= fAxialMax
-            && crossing.exitAxial >= fAxialMin
-            && crossing.exitAxial <= fAxialMax;
-        const bool azimuthAccepted =
-            crossing.entryPairAngleDeg >= fWindowMinDeg
-            && crossing.entryPairAngleDeg <= fWindowMaxDeg
-            && crossing.exitPairAngleDeg >= fWindowMinDeg
-            && crossing.exitPairAngleDeg <= fWindowMaxDeg;
-        return correctSides && axialAccepted && azimuthAccepted;
+    const auto intersectsPlane = [](const FlatPlane& plane,
+                                    const G4ThreeVector& position,
+                                    const G4ThreeVector& direction,
+                                    G4ThreeVector& hit) {
+        if (direction.y() <= 1.e-12) return false;
+        const G4double parameter = (plane.y - position.y())/direction.y();
+        if (parameter <= 0.0) return false;
+        hit = position + parameter*direction;
+        return std::abs(hit.x()) <= plane.width/2.0
+            && std::abs(hit.z() - plane.z) <= plane.height/2.0;
     };
 
     while (trials < fMaximumAttempts && !accepted) {
         fEcoMug->Generate();
         ++trials;
-
         std::array<double, 3> position = fEcoMug->GetGenerationPosition();
-        // Interpret EcoMug Z as height above the local inclined ground.
+        // Convert local source elevation to global Z using the ground height
+        // at this exact sampled Y coordinate: z_ground(y)=-slope*y.
         position[2] += -fGroundSlope*position[1];
-
         const G4double theta = fEcoMug->GetGenerationTheta();
         const G4double phi = fEcoMug->GetGenerationPhi();
-        const G4double dirX = std::sin(theta)*std::cos(phi);
-        const G4double dirY = std::sin(theta)*std::sin(phi);
-        const G4double dirZ = -std::abs(std::cos(theta));
-        if (dirY <= 0.0) continue;
+        const G4ThreeVector direction(std::sin(theta)*std::cos(phi),
+                                      std::sin(theta)*std::sin(phi),
+                                      -std::abs(std::cos(theta)));
+        const G4ThreeVector start(position[0], position[1], position[2]);
+        G4ThreeVector in1Hit, in2Hit;
+        if (!intersectsPlane(fIn1, start, direction, in1Hit)
+            || !intersectsPlane(fIn2, start, direction, in2Hit)) continue;
 
-        // Transform the candidate into the rigid tilted-cylinder frame.
-        const G4double localPosX = position[0];
-        const G4double localPosY =
-            fInclineCos*position[1] - fInclineSin*position[2];
-        const G4double localPosAxial =
-            fInclineSin*position[1] + fInclineCos*position[2];
-        const G4double localDirX = dirX;
-        const G4double localDirY =
-            fInclineCos*dirY - fInclineSin*dirZ;
-        const G4double localDirAxial =
-            fInclineSin*dirY + fInclineCos*dirZ;
-
-        ShellCrossing outerCrossing;
-        ShellCrossing innerCrossing;
-        if (!IntersectDetectorShell(
-                kOuterDetectorRadius, localPosX, localPosY,
-                localPosAxial, localDirX, localDirY, localDirAxial,
-                outerCrossing)
-            || !IntersectDetectorShell(
-                kInnerDetectorRadius, localPosX, localPosY,
-                localPosAxial, localDirX, localDirY, localDirAxial,
-                innerCrossing)
-            || !insideWindow(outerCrossing)
-            || !insideWindow(innerCrossing)) {
-            continue;
-        }
-
-        // Preserve the existing requirement that both mound-footprint
-        // crossings are downstream and remain within the configured axial
-        // detector band. This rejects grazing rays before Geant4 transport.
-        const G4double a = dirX*dirX + dirY*dirY;
-        if (a <= 1.e-18) continue;
-        const G4double b =
-            2.0*(position[0]*dirX + position[1]*dirY);
-        const G4double c =
-            position[0]*position[0] + position[1]*position[1]
+        // Do not test downstream planes: that would preferentially remove
+        // the large-scattering tracks which carry the tomography signal.
+        const G4double a = direction.x()*direction.x() + direction.y()*direction.y();
+        const G4double b = 2.0*(start.x()*direction.x() + start.y()*direction.y());
+        const G4double c = start.x()*start.x() + start.y()*start.y()
             - kMoundRadius*kMoundRadius;
         const G4double discriminant = b*b - 4.0*a*c;
-        if (discriminant <= 0.0) continue;
-        const G4double root = std::sqrt(discriminant);
-        const G4double entry = (-b - root)/(2.0*a);
-        const G4double exit = (-b + root)/(2.0*a);
+        if (a <= 1.e-18 || discriminant <= 0.0) continue;
+        const G4double entry = (-b - std::sqrt(discriminant))/(2.0*a);
+        const G4double exit = (-b + std::sqrt(discriminant))/(2.0*a);
         if (entry <= 0.0 || exit <= 0.0) continue;
-        const G4double entryAxial =
-            localPosAxial + entry*localDirAxial;
-        const G4double exitAxial =
-            localPosAxial + exit*localDirAxial;
-        if (entryAxial < fAxialMin || entryAxial > fAxialMax
-            || exitAxial < fAxialMin || exitAxial > fAxialMax) {
-            continue;
-        }
 
-        acceptedPosition =
-            G4ThreeVector(position[0], position[1], position[2]);
-        acceptedDirection = G4ThreeVector(dirX, dirY, dirZ);
+        acceptedPosition = start;
+        acceptedDirection = direction;
+        acceptedIn1Hit = in1Hit;
+        acceptedIn2Hit = in2Hit;
         acceptedMomentumGeV = fEcoMug->GetGenerationMomentum();
-        acceptedOuterCrossing = outerCrossing;
         accepted = true;
     }
 
@@ -335,27 +216,18 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event) {
 
     fParticleGun->SetParticlePosition(acceptedPosition);
     fParticleGun->SetParticleMomentumDirection(acceptedDirection);
-    // Retain the established project convention: EcoMug momentum in GeV/c
-    // is passed as particle-gun kinetic energy in GeV.
     fParticleGun->SetParticleEnergy(acceptedMomentumGeV*GeV);
-
     if (std::getenv("MOUND_PRINT_PRIMARY_DIRECTIONS") != nullptr) {
         G4cout << "CONDITIONAL_PRIMARY event=" << event->GetEventID()
                << " position_m=(" << acceptedPosition.x()/m << ","
-               << acceptedPosition.y()/m << ","
-               << acceptedPosition.z()/m << ")"
-               << " direction=(" << acceptedDirection.x() << ","
-               << acceptedDirection.y() << ","
-               << acceptedDirection.z() << ")"
-               << " entry_angle_deg="
-               << acceptedOuterCrossing.entryPairAngleDeg
-               << " exit_angle_deg="
-               << acceptedOuterCrossing.exitPairAngleDeg
-               << " entry_axial_m="
-               << acceptedOuterCrossing.entryAxial/m
-               << " exit_axial_m="
-               << acceptedOuterCrossing.exitAxial/m
-               << " momentum_GeV=" << acceptedMomentumGeV
+               << acceptedPosition.y()/m << "," << acceptedPosition.z()/m
+               << ") direction=(" << acceptedDirection.x() << ","
+               << acceptedDirection.y() << "," << acceptedDirection.z()
+               << ") in1_hit_m=(" << acceptedIn1Hit.x()/m << ","
+               << acceptedIn1Hit.y()/m << "," << acceptedIn1Hit.z()/m
+               << ") in2_hit_m=(" << acceptedIn2Hit.x()/m << ","
+               << acceptedIn2Hit.y()/m << "," << acceptedIn2Hit.z()/m
+               << ") momentum_GeV=" << acceptedMomentumGeV
                << " trials=" << trials << G4endl;
     }
 

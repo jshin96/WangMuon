@@ -19,9 +19,7 @@ request_memory          = 2GB
 request_disk            = 2GB
 
 # --- Launch ---
-# Submit 500 jobs for each item (1,000 total).  The third argument selects
-# MOUND_ROOM_MATERIAL at runtime; recompilation is not required.
-queue 400 room_material in (
+queue 100 room_material in (
     soil
     air
 )

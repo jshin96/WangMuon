@@ -15,8 +15,10 @@ class RunAction : public G4UserRunAction
     virtual void BeginOfRunAction(const G4Run* run);
     virtual void   EndOfRunAction(const G4Run* run);
 
-    void RecordPrimaryGeneration(G4int eventID, G4long trials,
-                                 G4bool accepted);
+    // Called once for every requested beam event, including events rejected
+    // before Geant4 transport.  ROOT stores only four-layer coincidences, so
+    // these counters are the authoritative generation-efficiency diagnostic.
+    void RecordPrimaryGeneration(G4int eventID, G4long trials, G4bool accepted);
 
   private:
     G4long fGeneratedEvents = 0;

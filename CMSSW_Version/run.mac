@@ -5,4 +5,4 @@
 # The source is conditioned on the uphill/downhill detector window configured
 # by run_sim_job.sh. It preserves EcoMug draws inside that proposal window but
 # is not an unconditioned full-sky absolute-flux simulation.
-/run/beamOn 5000
+/run/beamOn 10000
