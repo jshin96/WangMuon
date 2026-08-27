@@ -40,48 +40,6 @@ G4double ReadFiniteEnvironmentDouble(const char* name, G4double fallback) {
         return fallback;
     }
 }
-
-// Resolve convenient metal names while still permitting any Geant4/NIST
-// material identifier (for example, G4_Al or G4_Au).
-G4Material* ReadScatteringPlateMaterial(G4NistManager* nistManager) {
-    std::string materialName = "tungsten";
-    if (const char* setting = std::getenv("MOUND_SCATTERING_PLATE_MATERIAL")) {
-        materialName = setting;
-    }
-
-    std::string normalizedName = materialName;
-    std::transform(normalizedName.begin(), normalizedName.end(),
-                   normalizedName.begin(),
-                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-
-    std::string nistName;
-    if (normalizedName == "tungsten" || normalizedName == "w") {
-        nistName = "G4_W";
-    } else if (normalizedName == "lead" || normalizedName == "pb") {
-        nistName = "G4_Pb";
-    } else if (normalizedName == "copper" || normalizedName == "cu") {
-        nistName = "G4_Cu";
-    } else if (normalizedName == "iron" || normalizedName == "fe") {
-        nistName = "G4_Fe";
-    } else if (normalizedName.rfind("g4_", 0) == 0) {
-        // Preserve the supplied NIST spelling, whose element symbols are case-sensitive.
-        nistName = materialName;
-    } else {
-        G4Exception("DetectorConstruction::Construct", "InvalidPlateMaterial",
-                    FatalException,
-                    "MOUND_SCATTERING_PLATE_MATERIAL must be tungsten, lead, copper, iron, or a valid G4_* NIST material name.");
-        return nullptr;
-    }
-
-    G4Material* material = nistManager->FindOrBuildMaterial(nistName, false);
-    if (material == nullptr) {
-        const std::string message = "Unknown Geant4/NIST plate material: " + nistName;
-        G4Exception("DetectorConstruction::Construct", "InvalidPlateMaterial",
-                    FatalException, message.c_str());
-    }
-    return material;
-}
-
 DetectorConstruction::DetectorConstruction()
 : G4VUserDetectorConstruction(),
   fLogicDetectorInner(nullptr), fLogicDetectorOuter(nullptr)
@@ -143,20 +101,8 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     // -----------------------------------------------------
     G4NistManager* nistManager = G4NistManager::Instance();
     G4Material* air = nistManager->FindOrBuildMaterial("G4_AIR");
-    G4Material* scatteringPlateMaterial = ReadScatteringPlateMaterial(nistManager);
-    // A parameterised triple-GEM response is applied in EventAction.  The
-    // active volume is nevertheless gas, so Geant4 provides the correct
-    // energy deposition and passive-material scattering baseline.
-    G4Material* argon = nistManager->FindOrBuildMaterial("G4_Ar");
-    G4Material* carbonDioxide = nistManager->FindOrBuildMaterial("G4_CARBON_DIOXIDE");
-    G4Material* gemGas = G4Material::GetMaterial("GEMGasArCO2", false);
-    if (!gemGas) {
-        // 70/30 by volume Ar/CO2, expressed as approximate mass fractions.
-        gemGas = new G4Material("GEMGasArCO2", 1.84*mg/cm3, 2,
-                                kStateGas, 293.15*kelvin, 1.0*atmosphere);
-        gemGas->AddMaterial(argon, 0.620);
-        gemGas->AddMaterial(carbonDioxide, 0.380);
-    }
+    G4Material* tungsten = nistManager->FindOrBuildMaterial("G4_W");
+    G4Material* scintillator = nistManager->FindOrBuildMaterial("G4_PLASTIC_SC_VINYLTOLUENE");
 
     G4Element* elO  = nistManager->FindOrBuildElement("O");
     G4Element* elSi = nistManager->FindOrBuildElement("Si");
@@ -288,20 +234,10 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     // =================================================================
     // 3. The Nested Room Setup (Mound -> Rock Wall -> Air Room)
     // =================================================================
-    const G4double wallThickness = ReadFiniteEnvironmentDouble(
-        "MOUND_ROOM_WALL_THICKNESS_CM", 50.0)*cm;
-    const G4double roomX = ReadFiniteEnvironmentDouble(
-        "MOUND_ROOM_SIZE_X_M", 4.0)*m;
-    const G4double roomY = ReadFiniteEnvironmentDouble(
-        "MOUND_ROOM_SIZE_Y_M", 4.0)*m;
-    const G4double roomZ = ReadFiniteEnvironmentDouble(
-        "MOUND_ROOM_SIZE_Z_M", 4.0)*m;
-    if (roomX <= 0.0 || roomY <= 0.0 || roomZ <= 0.0
-        || wallThickness <= 0.0) {
-        G4Exception("DetectorConstruction::Construct", "InvalidRoomSize",
-                    FatalException,
-                    "MOUND_ROOM_SIZE_X_M, MOUND_ROOM_SIZE_Y_M, MOUND_ROOM_SIZE_Z_M, and MOUND_ROOM_WALL_THICKNESS_CM must be positive.");
-    }
+    G4double wallThickness = 50.0 * cm;
+    G4double roomX = 4.0 * m;
+    G4double roomY = 4.0 * m;
+    G4double roomZ = 4.0 * m;
 
     G4Box* solidRockWall = new G4Box("SolidRockWall",
                                      roomX/2 + wallThickness,
@@ -337,10 +273,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
                           logicRockWall,
                           "PhysRockWall", logicMound, false, 0, true);
         G4cout << "Room centre: y=" << roomCentreY/m
-               << " m; interior size (x,y,z)=(" << roomX/m << ", "
-               << roomY/m << ", " << roomZ/m << ") m"
-               << "; wall thickness=" << wallThickness/cm << " cm"
-               << "; outer-wall -Y,-Z edge terrain z="
+               << " m; outer-wall -Y,-Z edge terrain z="
                << wallMinusYEdgeGroundZ/m << " m"
                << G4endl;
     }
@@ -478,88 +411,115 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
 
     // -----------------------------------------------------
-    // 5. Flat GEM detector planes
+    // 5. Full-2pi rigid detector cylinders
     // -----------------------------------------------------
-    // Planes are vertical, with their thin dimension along global Y.  Each
-    // plane has an independent X width, Z height, Y centre, and elevation
-    // above the inclined ground at that Y coordinate.
-    // This makes the measured five-plane layout explicit instead of deriving
-    // it from two angular sectors of cylindrical shells.
+    // Use two ordinary cylindrical shells with their common axis normal to
+    // the inclined ground.  Their lower caps lie in the ground plane and the
+    // layers are separated by 30 cm in radius.
+//    constexpr G4double detectorHeight = 13.0*m;
     constexpr G4double detectorThickness = 1.0*cm;
-    struct FlatGEMConfig {
-        G4String label;
-        G4double width;
-        G4double height;
-        G4double y;
-        G4double z;
-    };
-    const auto readGEMSetting = [](const G4String& label, const char* suffix,
-                                   G4double fallback) {
-        const std::string name = "MOUND_GEM_" + std::string(label) + suffix;
-        return ReadFiniteEnvironmentDouble(name.c_str(), fallback);
-    };
-    const auto makeGEMConfig = [&readGEMSetting, groundSlope](const char* label,
-                                                 G4double defaultY) {
-        const G4String gemLabel(label);
-        const G4double y = readGEMSetting(gemLabel, "_Y_M", defaultY)*m;
-        const G4double elevation = readGEMSetting(gemLabel, "_Z_M", 1.0)*m;
-        return FlatGEMConfig{
-            gemLabel,
-            readGEMSetting(gemLabel, "_WIDTH_M", 1.0)*m,
-            readGEMSetting(gemLabel, "_HEIGHT_M", 1.0)*m,
-            y,
-            elevation - groundSlope*y};
-    };
-    const FlatGEMConfig gemIn1 = makeGEMConfig("IN1", -27.0);
-    const FlatGEMConfig gemIn2 = makeGEMConfig("IN2", -23.0);
-    const FlatGEMConfig gemOut1 = makeGEMConfig("OUT1", 23.0);
-    const FlatGEMConfig gemOut2 = makeGEMConfig("OUT2", 27.0);
-    const FlatGEMConfig gemOut3 = makeGEMConfig("OUT3", 28.04);
-    const FlatGEMConfig gemConfigs[] = {
-        gemIn1, gemIn2, gemOut1, gemOut2, gemOut3};
-    for (const auto& config : gemConfigs) {
-        if (config.width <= 0.0 || config.height <= 0.0) {
-            G4Exception("DetectorConstruction::Construct", "InvalidFlatGEMSize",
+    constexpr G4double innerRadius = 23.0*m;
+    constexpr G4double detectorLayerSpacing = 400.0*cm;
+    constexpr G4double outerRadius = innerRadius + detectorLayerSpacing;
+    auto* detectorRotation = new G4RotationMatrix();
+    detectorRotation->rotateX(-groundIncline);
+    const G4ThreeVector detectorAxis =
+        (*detectorRotation) * G4ThreeVector(0., 0., 1.);
+    const G4double detectorHeight = ReadFiniteEnvironmentDouble(
+        "MOUND_DETECTOR_WINDOW_HEIGHT_M", 1.0)*m;
+    const G4double detectorElevationM = ReadFiniteEnvironmentDouble(
+        "MOUND_DETECTOR_WINDOW_ELEVATION_M", 1.0)*m;
+    if (detectorHeight <= 0.0) {
+        G4Exception("PrimaryGeneratorAction", "InvalidDetectorWindowHeight",
+                    FatalException,
+                    "MOUND_DETECTOR_WINDOW_HEIGHT_M must be positive.");
+    }
+    const G4ThreeVector detectorCentre = detectorAxis * ((detectorHeight/2.0)+(detectorElevationM));
+    const G4Transform3D detectorTransform(*detectorRotation, detectorCentre);
+    G4double DetDegMin = -1.1;
+    G4double DetDegMax = 1.1;
+    if (const char* DetDegMinSetting = std::getenv("MOUND_DETECTOR_WINDOW_MIN_DEG")) {
+        try {
+            DetDegMin = std::stod(DetDegMinSetting);
+        } catch (const std::exception&) {
+            G4Exception("DetectorConstruction::Construct", "InvalidMOUND_DETECTOR_WINDOW_MIN_DEG",
                         FatalException,
-                        "Every MOUND_GEM_<PLANE>_WIDTH_M and _HEIGHT_M must be positive.");
+                        "MOUND_DETECTOR_WINDOW_MIN_DEG must be a finite number of degrees.");
         }
     }
+    if (const char* DetDegMaxSetting = std::getenv("MOUND_DETECTOR_WINDOW_MAX_DEG")) {
+        try {
+            DetDegMax = std::stod(DetDegMaxSetting);
+        } catch (const std::exception&) {
+            G4Exception("DetectorConstruction::Construct", "InvalidMOUND_DETECTOR_WINDOW_MAX_DEG",
+                        FatalException,
+                        "MOUND_DETECTOR_WINDOW_MAX_DEG must be a finite number of degrees.");
+        }
+    }
+    if (!std::isfinite(DetDegMin) || !std::isfinite(DetDegMax)
+        || DetDegMax <= DetDegMin || DetDegMax - DetDegMin > 360.0) {
+        G4Exception("DetectorConstruction::Construct", "InvalidDetectorWindow",
+                    FatalException,
+                    "Detector-window bounds must be finite, ordered, and span at most 360 degrees.");
+    }
+    G4double sectorSpan = (DetDegMax-DetDegMin)*deg;
 
+    const G4double sectorStarts[] = {
+        CLHEP::pi/2.0 + (DetDegMin*deg),
+        3.0*CLHEP::pi/2.0 + (DetDegMin*deg)
+    };
     G4VisAttributes* detVis = new G4VisAttributes(G4Colour(0.0, 0.8, 1.0, 0.5));
     detVis->SetForceSolid(true);
-    for (const auto& config : gemConfigs) {
-        const G4String volumeName = "Detector" + config.label;
-        auto* logic = new G4LogicalVolume(
-            new G4Box("Flat" + volumeName, config.width/2.0,
-                      detectorThickness/2.0, config.height/2.0),
-            gemGas, volumeName);
-        new G4PVPlacement(nullptr, G4ThreeVector(0., config.y, config.z), logic,
-                          volumeName, logicWorld, false, 0, true);
-        logic->SetVisAttributes(detVis);
-        if (config.label == "IN1") fLogicDetectorInner = logic;
-        if (config.label == "OUT2") fLogicDetectorOuter = logic;
+    for (G4int copyNo = 0; copyNo < 2; ++copyNo) {
+        auto* innerLogic = new G4LogicalVolume(
+            new G4Tubs("TiltedDetectorInnerSector", innerRadius,
+                     innerRadius + detectorThickness, detectorHeight/2.0,
+                     sectorStarts[copyNo], sectorSpan),
+            scintillator, "DetectorInner");
+
+        auto* outerLogic = new G4LogicalVolume(
+            new G4Tubs("TiltedDetectorOuterSector", outerRadius,
+                     outerRadius + detectorThickness, detectorHeight/2.0,
+                     sectorStarts[copyNo], sectorSpan),
+            scintillator, "DetectorOuter");
+
+        new G4PVPlacement(detectorTransform, innerLogic,
+                          "DetectorInner", logicWorld, false, copyNo, true);
+        new G4PVPlacement(detectorTransform, outerLogic,
+                          "DetectorOuter", logicWorld, false, copyNo, true);
+	if (copyNo == 0) {
+		fLogicDetectorInner = innerLogic;
+		fLogicDetectorOuter = outerLogic;
+	}
+	innerLogic->SetVisAttributes(detVis);
+	outerLogic->SetVisAttributes(detVis);
     }
 
-    // The scattering plate is centred halfway between OUT2 and OUT3.  Its
-    // position therefore follows the independently configured detector planes.
-    const G4double plateRadialThickness = ReadFiniteEnvironmentDouble(
-        "MOUND_TUNGSTEN_THICKNESS_CM", 3.0)*cm;
-    if (plateRadialThickness <= 0.0) {
-        G4Exception("DetectorConstruction::Construct", "InvalidPostTungstenGeometry",
-                    FatalException,
-                    "MOUND_TUNGSTEN_THICKNESS_CM must be positive.");
-    }
-    auto* scatteringPlate = new G4Box("ScatteringPlate",
-                                      std::min(gemOut2.width, gemOut3.width)/2.0,
-                                      plateRadialThickness/2.0,
-                                      std::min(gemOut2.height, gemOut3.height)/2.0);
-    auto* logicScatteringPlate = new G4LogicalVolume(scatteringPlate,
-                                                      scatteringPlateMaterial,
-                                                      "ScatteringPlate");
-    const G4ThreeVector plateCentre(0., gemOut2.y + (plateRadialThickness/2.0) + (10.0*cm),
-                                    gemOut2.z - (std::abs(groundSlope)*((plateRadialThickness/2.0) + 10.0*cm)) );
-    new G4PVPlacement(nullptr, plateCentre, logicScatteringPlate,
-                      "ScatteringPlate", logicWorld, false, 0, true);
+
+
+    // A 1 m x 1 m tungsten face immediately outside the inner +Y detector
+    // sector.  Define and place it in the detector's tilted local frame so
+    // its radial face remains parallel to that detector layer.
+    constexpr G4double plateFaceSize = 1.0*m;
+    constexpr G4double plateRadialThickness = 30.0*cm;
+    constexpr G4double plateClearance = 1.0*um;
+    auto* tungstenPlate = new G4Box("TungstenPlate",
+                                    plateFaceSize/2.0,
+                                    plateRadialThickness/2.0,
+                                    plateFaceSize/2.0);
+    auto* logicTungstenPlate = new G4LogicalVolume(tungstenPlate, tungsten,
+                                                   "TungstenPlate");
+    const G4double plateCentreRadius =
+        innerRadius + detectorThickness + plateClearance
+        + plateRadialThickness/2.0;
+    // detectorTransform translates the cylinder origin by detectorCentre so
+    // its lower cap is on the ground plane.  Apply that same translation to
+    // the plate; rotation alone would incorrectly leave it at the lower cap.
+    const G4ThreeVector plateCentre = detectorCentre
+        + (*detectorRotation) * G4ThreeVector(0., plateCentreRadius+(1.0*cm), 0.);
+    const G4Transform3D plateTransform(*detectorRotation, plateCentre);
+    new G4PVPlacement(plateTransform, logicTungstenPlate,
+                      "TungstenPlate", logicWorld, false, 0, true);
 
 
 
@@ -593,8 +553,8 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 //    fLogicDetectorInner->SetVisAttributes(detVis);
 //    fLogicDetectorOuter->SetVisAttributes(detVis);
 
-    G4VisAttributes* scatteringPlateVis = new G4VisAttributes(G4Colour(0.5, 0.5, 0.5, 0.8));
-    scatteringPlateVis->SetForceSolid(true);
-    logicScatteringPlate->SetVisAttributes(scatteringPlateVis);
+    G4VisAttributes* TungstenPlateVis = new G4VisAttributes(G4Colour(0.5, 0.5, 0.5, 0.8)); // Solid grey rock
+    TungstenPlateVis->SetForceSolid(true);
+    logicTungstenPlate->SetVisAttributes(TungstenPlateVis);
     return physWorld;
 }

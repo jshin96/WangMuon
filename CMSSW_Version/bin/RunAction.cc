@@ -71,9 +71,25 @@ RunAction::RunAction() : G4UserRunAction() {
         analysisManager->CreateNtupleDColumn(G4String(plane) + "_Charge_fC");
         analysisManager->CreateNtupleIColumn(G4String(plane) + "_Valid");
     }
+    analysisManager->FinishNtuple();
 
-
-
+    // One row per run.  Source quantities refer to the fully configured
+    // EcoMug phase space; acceptance rates are normalized by all trials.
+    analysisManager->CreateNtuple("RunMetadata", "Flux normalization and exposure summary");
+    analysisManager->CreateNtupleDColumn("SourceRatePerArea_Hz_m2");
+    analysisManager->CreateNtupleDColumn("SourceRatePerAreaError_Hz_m2");
+    analysisManager->CreateNtupleDColumn("SourceArea_m2");
+    analysisManager->CreateNtupleDColumn("SourceRate_Hz");
+    analysisManager->CreateNtupleIColumn("RateIntegrationPoints");
+    analysisManager->CreateNtupleIColumn("RequestedEvents");
+    analysisManager->CreateNtupleIColumn("AcceptedIn1In2");
+    analysisManager->CreateNtupleIColumn("AbortedPrimaries");
+    analysisManager->CreateNtupleDColumn("TotalTrials");
+    analysisManager->CreateNtupleIColumn("RecordedFiveGEM");
+    analysisManager->CreateNtupleDColumn("In1In2Rate_Hz");
+    analysisManager->CreateNtupleDColumn("RecordedFiveGEMRate_Hz");
+    analysisManager->CreateNtupleDColumn("EquivalentLiveTime_s");
+    analysisManager->CreateNtupleDColumn("DaysFor10000FiveGEM");
     analysisManager->FinishNtuple();
 }
 
@@ -86,6 +102,7 @@ void RunAction::BeginOfRunAction(const G4Run*) {
     fAbortedPrimaries = 0;
     fTotalTrials = 0;
     fMaximumTrials = 0;
+    fFiveGEMEvents = 0;
     auto analysisManager = G4AnalysisManager::Instance();
     analysisManager->OpenFile("MoundTomographyData");
 }
@@ -99,8 +116,58 @@ void RunAction::EndOfRunAction(const G4Run*) {
            << " mean_trials=" << meanTrials
            << " max_trials=" << fMaximumTrials << G4endl;
     auto analysisManager = G4AnalysisManager::Instance();
+    const G4double sourceRateHz = fSourceRatePerAreaHzM2*fSourceAreaM2;
+    const G4double sourceRateErrorHz = fSourceRatePerAreaErrorHzM2*fSourceAreaM2;
+    const G4double trialFraction = fTotalTrials > 0
+        ? 1.0/static_cast<G4double>(fTotalTrials) : 0.0;
+    const G4double in1In2RateHz = sourceRateHz*fAcceptedPrimaries*trialFraction;
+    const G4double recordedRateHz = sourceRateHz*fFiveGEMEvents*trialFraction;
+    const G4double equivalentLiveTime = sourceRateHz > 0.0
+        ? static_cast<G4double>(fTotalTrials)/sourceRateHz : 0.0;
+    const G4double daysFor10000 = recordedRateHz > 0.0
+        ? 10000.0/(recordedRateHz*86400.0) : 0.0;
+
+    constexpr G4int metadataNtuple = 1;
+    G4int column = 0;
+    analysisManager->FillNtupleDColumn(metadataNtuple, column++, fSourceRatePerAreaHzM2);
+    analysisManager->FillNtupleDColumn(metadataNtuple, column++, fSourceRatePerAreaErrorHzM2);
+    analysisManager->FillNtupleDColumn(metadataNtuple, column++, fSourceAreaM2);
+    analysisManager->FillNtupleDColumn(metadataNtuple, column++, sourceRateHz);
+    analysisManager->FillNtupleIColumn(metadataNtuple, column++, fRateIntegrationPoints);
+    analysisManager->FillNtupleIColumn(metadataNtuple, column++, fGeneratedEvents);
+    analysisManager->FillNtupleIColumn(metadataNtuple, column++, fAcceptedPrimaries);
+    analysisManager->FillNtupleIColumn(metadataNtuple, column++, fAbortedPrimaries);
+    analysisManager->FillNtupleDColumn(metadataNtuple, column++, static_cast<G4double>(fTotalTrials));
+    analysisManager->FillNtupleIColumn(metadataNtuple, column++, fFiveGEMEvents);
+    analysisManager->FillNtupleDColumn(metadataNtuple, column++, in1In2RateHz);
+    analysisManager->FillNtupleDColumn(metadataNtuple, column++, recordedRateHz);
+    analysisManager->FillNtupleDColumn(metadataNtuple, column++, equivalentLiveTime);
+    analysisManager->FillNtupleDColumn(metadataNtuple, column++, daysFor10000);
+    analysisManager->AddNtupleRow(metadataNtuple);
+
+    G4cout << "RUN_METADATA source_rate_hz=" << sourceRateHz
+           << " +/- " << sourceRateErrorHz
+           << " total_trials=" << fTotalTrials
+           << " recorded_five_gem=" << fFiveGEMEvents
+           << " recorded_rate_per_day=" << recordedRateHz*86400.0
+           << " equivalent_live_time_s=" << equivalentLiveTime
+           << " days_for_10000_five_gem=" << daysFor10000 << G4endl;
     analysisManager->Write();
     analysisManager->CloseFile();
+}
+
+void RunAction::SetSourceFluxMetadata(G4double ratePerAreaHzM2,
+                                      G4double ratePerAreaErrorHzM2,
+                                      G4double sourceAreaM2,
+                                      G4long integrationPoints) {
+    fSourceRatePerAreaHzM2 = ratePerAreaHzM2;
+    fSourceRatePerAreaErrorHzM2 = ratePerAreaErrorHzM2;
+    fSourceAreaM2 = sourceAreaM2;
+    fRateIntegrationPoints = integrationPoints;
+}
+
+void RunAction::RecordFiveGEMEvent() {
+    ++fFiveGEMEvents;
 }
 
 void RunAction::RecordPrimaryGeneration(G4int eventID, G4long trials,

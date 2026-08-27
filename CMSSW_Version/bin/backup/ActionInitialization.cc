@@ -28,7 +28,7 @@ void ActionInitialization::Build() const
     SetUserAction(new PrimaryGeneratorAction(runAction));
 
     // 3. Event Action (handles the coincidence trigger)
-    EventAction* eventAction = new EventAction(runAction);
+    EventAction* eventAction = new EventAction();
     SetUserAction(eventAction);
 
     // 4. Stepping Action (needs the EventAction pointer to pass the hits)

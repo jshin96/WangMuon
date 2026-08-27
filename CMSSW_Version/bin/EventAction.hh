@@ -5,10 +5,12 @@
 #include "globals.hh"
 #include "G4ThreeVector.hh"
 
+class RunAction;
+
 class EventAction : public G4UserEventAction
 {
   public:
-    EventAction();
+    explicit EventAction(RunAction* runAction);
     virtual ~EventAction();
 
     virtual void  BeginOfEventAction(const G4Event* event);
@@ -42,6 +44,7 @@ class EventAction : public G4UserEventAction
     void Digitize(Hit& hit);
     Hit fIn1, fIn2, fOut1, fOut2, fOut3;
     G4ThreeVector fGEMTangentialAxis, fGEMAxialAxis;
+    RunAction* fRunAction;
     bool fHitMound;
     bool fHitRoom;
 };

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include "EventAction.hh"
+#include "RunAction.hh"
 #include "G4Event.hh"
 #include "G4AnalysisManager.hh"
 #include "G4SystemOfUnits.hh"
@@ -76,7 +77,8 @@ void FillTruth(G4AnalysisManager* manager, G4int& column,
 }
 }
 
-EventAction::EventAction() : G4UserEventAction(), fHitMound(false), fHitRoom(false) {
+EventAction::EventAction(RunAction* runAction)
+    : G4UserEventAction(), fRunAction(runAction), fHitMound(false), fHitRoom(false) {
     // Flat GEM planes have global-Y normals, so their measured in-plane axes
     // are global X and global Z regardless of terrain inclination.
     fGEMTangentialAxis = G4ThreeVector(1., 0., 0.);
@@ -166,7 +168,7 @@ void EventAction::BeginOfEventAction(const G4Event*) {
 void EventAction::EndOfEventAction(const G4Event* event) {
     // Preserve the established incoming two-plane trigger; the GEM trigger
     // response is available separately through the GEM*_Valid branches.
-    if (!(fIn1.hit && fIn2.hit)) return;
+    if (!(fIn2.hit)) return;
     Digitize(fIn1); Digitize(fIn2); Digitize(fOut1); Digitize(fOut2); Digitize(fOut3);
 
     G4int trajectoryFlag = fHitRoom ? 2 : (fHitMound ? 1 : 0);
@@ -190,6 +192,12 @@ void EventAction::EndOfEventAction(const G4Event* event) {
         manager->FillNtupleDColumn(column++, hit->energy/keV);
         manager->FillNtupleDColumn(column++, hit->gemCharge);
         manager->FillNtupleIColumn(column++, hit->gemValid ? 1 : 0);
+    }
+    //if (fIn1.gemValid && fIn2.gemValid && fOut1.gemValid
+    //    && fOut2.gemValid && fOut3.gemValid) {
+    if (fIn2.gemValid && fOut1.gemValid
+        && fOut2.gemValid && fOut3.gemValid) {
+        fRunAction->RecordFiveGEMEvent();
     }
     manager->AddNtupleRow();
 }

@@ -54,6 +54,24 @@ G4long ReadMaximumAttempts() {
         return kDefaultMaximumAttempts;
     }
 }
+
+G4long ReadRateIntegrationPoints() {
+    constexpr G4long kDefaultRateIntegrationPoints = 100000;
+    const char* setting = std::getenv("MOUND_ECOMUG_RATE_INTEGRATION_POINTS");
+    if (setting == nullptr) return kDefaultRateIntegrationPoints;
+    try {
+        std::size_t consumed = 0;
+        const long value = std::stol(setting, &consumed);
+        if (consumed != std::string(setting).size() || value <= 1) {
+            throw std::invalid_argument("not greater than one");
+        }
+        return static_cast<G4long>(value);
+    } catch (const std::exception&) {
+        G4Exception("PrimaryGeneratorAction", "InvalidRateIntegrationPoints", FatalException,
+                    "MOUND_ECOMUG_RATE_INTEGRATION_POINTS must be an integer greater than one.");
+        return kDefaultRateIntegrationPoints;
+    }
+}
 } // namespace
 
 PrimaryGeneratorAction::PrimaryGeneratorAction(RunAction* runAction)
@@ -74,10 +92,12 @@ PrimaryGeneratorAction::PrimaryGeneratorAction(RunAction* runAction)
             (prefix + "_Y_M").c_str(), 0.0)*m;
         const G4double elevation = ReadFiniteEnvironmentDouble(
             (prefix + "_Z_M").c_str(), 1.0)*m;
+        const G4double height = ReadFiniteEnvironmentDouble(
+            (prefix + "_HEIGHT_M").c_str(), 1.0)*m;
         return FlatPlane{
             ReadFiniteEnvironmentDouble((prefix + "_WIDTH_M").c_str(), 1.0)*m,
-            ReadFiniteEnvironmentDouble((prefix + "_HEIGHT_M").c_str(), 1.0)*m,
-            y, elevation - groundSlope*y};
+            height,
+            y, elevation - groundSlope*y + height/2.0};
     };
     fIn1 = readPlane("IN1");
     fIn2 = readPlane("IN2");
@@ -116,7 +136,7 @@ PrimaryGeneratorAction::PrimaryGeneratorAction(RunAction* runAction)
     fParticleGun->SetParticleDefinition(
         G4ParticleTable::GetParticleTable()->FindParticle("mu-"));
     fEcoMug->SetUseCylinder();
-    fEcoMug->SetCylinderRadius(std::abs(fIn1.y) + sourceClearance);
+    fEcoMug->SetCylinderRadius(std::abs(fIn2.y) + sourceClearance);
     // EcoMug samples source Z as elevation above local ground.  Each sampled
     // point is later translated by its own inclined-ground height.
     fEcoMug->SetCylinderHeight(sourceElevationMax - sourceElevationMin);
@@ -128,22 +148,53 @@ PrimaryGeneratorAction::PrimaryGeneratorAction(RunAction* runAction)
     const G4double sourcePhiMaxDeg = 270.0 + sourceArcHalfWidthDeg;
     fEcoMug->SetCylinderMinPositionPhi(sourcePhiMinDeg*kPi/180.0);
     fEcoMug->SetCylinderMaxPositionPhi(sourcePhiMaxDeg*kPi/180.0);
-    // Generated directions use phi=90 degrees for +Y.  Restricting this
-    // proposal cone avoids drawing directions that point away from IN1.
-    fEcoMug->SetMinimumPhi((90.0 - sourceDirectionHalfWidthDeg)*kPi/180.0);
-    fEcoMug->SetMaximumPhi((90.0 + sourceDirectionHalfWidthDeg)*kPi/180.0);
+    // EcoMug's cylinder direction azimuth is local to the sampled source
+    // point: Generate() adds the source-position phi before returning it.
+    // A source point on the upstream (-Y) arc is near 270 degrees, so its
+    // local direction must be near 180 degrees to produce a world direction
+    // near +Y (90 degrees) and cross IN1 then IN2.
+    fEcoMug->SetMinimumPhi((180.0 - sourceDirectionHalfWidthDeg)*kPi/180.0);
+    fEcoMug->SetMaximumPhi((180.0 + sourceDirectionHalfWidthDeg)*kPi/180.0);
     fEcoMug->SetMinimumMomentum(minimumMomentumGeV);
     fEcoMug->SetMaximumMomentum(maximumMomentumGeV);
     fEcoMug->SetMinimumTheta(70.0*kPi/180.0);
     fEcoMug->SetMaximumTheta(80.0*kPi/180.0);
 
+    const G4double horizontalRateHzM2 = ReadFiniteEnvironmentDouble(
+        "MOUND_HORIZONTAL_MUON_RATE_HZ_M2", 129.0);
+    if (horizontalRateHzM2 <= 0.0) {
+        G4Exception("PrimaryGeneratorAction", "InvalidHorizontalMuonRate", FatalException,
+                    "MOUND_HORIZONTAL_MUON_RATE_HZ_M2 must be positive.");
+    }
+    const G4long rateIntegrationPoints = ReadRateIntegrationPoints();
+    fEcoMug->SetHorizontalRate(horizontalRateHzM2*EMUnits::hertz/EMUnits::m2);
+    double sourceRatePerAreaHzM2 = 0.0;
+    double sourceRatePerAreaErrorHzM2 = 0.0;
+    // EcoMug generates inward cylinder rays around local phi=pi.  Its rate
+    // integrator expects the equivalent outward-normal convention around
+    // local phi=0 and otherwise clips cos(phi)<0 to zero.  Shift only this
+    // copied integrator by pi; the physical generated tracks are unchanged.
+    EcoMug rateCalculator(*fEcoMug);
+    rateCalculator.SetMinimumPhi(fEcoMug->GetMinimumPhi() - kPi);
+    rateCalculator.SetMaximumPhi(fEcoMug->GetMaximumPhi() - kPi);
+    rateCalculator.GetAverageGenRateAndError(sourceRatePerAreaHzM2,
+                                              sourceRatePerAreaErrorHzM2,
+                                              rateIntegrationPoints);
+    fRunAction->SetSourceFluxMetadata(sourceRatePerAreaHzM2/(EMUnits::hertz/EMUnits::m2),
+                                      sourceRatePerAreaErrorHzM2/(EMUnits::hertz/EMUnits::m2),
+                                      fEcoMug->GetGenSurfaceArea()/(m*m),
+                                      rateIntegrationPoints);
+
     G4cout << "CONDITIONAL_PRIMARY_CONFIGURATION source_upstream_phi_deg=["
            << sourcePhiMinDeg << "," << sourcePhiMaxDeg << "] source_elevation_m=["
-           << sourceElevationMin/m << "," << sourceElevationMax/m << "] in1_yz_m=["
-           << fIn1.y/m << "," << fIn1.z/m << "] in2_yz_m=["
+           << sourceElevationMin/m << "," << sourceElevationMax/m << "] in2_yz_m=["
            << fIn2.y/m << "," << fIn2.z/m << "] momentum_GeV=["
            << minimumMomentumGeV << "," << maximumMomentumGeV
            << "] max_attempts=" << fMaximumAttempts << G4endl;
+    G4cout << "SOURCE_FLUX_NORMALIZATION horizontal_rate_hz_m2="
+           << horizontalRateHzM2 << " source_rate_hz="
+           << sourceRatePerAreaHzM2*fEcoMug->GetGenSurfaceArea()/(m*m)
+           << " integration_points=" << rateIntegrationPoints << G4endl;
 }
 
 PrimaryGeneratorAction::~PrimaryGeneratorAction() {
@@ -183,8 +234,9 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event) {
                                       -std::abs(std::cos(theta)));
         const G4ThreeVector start(position[0], position[1], position[2]);
         G4ThreeVector in1Hit, in2Hit;
-        if (!intersectsPlane(fIn1, start, direction, in1Hit)
-            || !intersectsPlane(fIn2, start, direction, in2Hit)) continue;
+        //if (!intersectsPlane(fIn1, start, direction, in1Hit)
+        //    || !intersectsPlane(fIn2, start, direction, in2Hit)) continue;
+        if (!intersectsPlane(fIn2, start, direction, in2Hit)) continue;
 
         // Do not test downstream planes: that would preferentially remove
         // the large-scattering tracks which carry the tomography signal.

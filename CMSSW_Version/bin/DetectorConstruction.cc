@@ -528,12 +528,18 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     G4VisAttributes* detVis = new G4VisAttributes(G4Colour(0.0, 0.8, 1.0, 0.5));
     detVis->SetForceSolid(true);
     for (const auto& config : gemConfigs) {
-        const G4String volumeName = "Detector" + config.label;
+        // Environment-variable labels are upper-case (IN1/OUT1), while the
+        // hit collection uses CamelCase volume names (DetectorIn1/Out1).
+        G4String planeName = config.label;
+        std::transform(planeName.begin(), planeName.end(), planeName.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        planeName[0] = static_cast<char>(std::toupper(planeName[0]));
+        const G4String volumeName = "Detector" + planeName;
         auto* logic = new G4LogicalVolume(
             new G4Box("Flat" + volumeName, config.width/2.0,
                       detectorThickness/2.0, config.height/2.0),
             gemGas, volumeName);
-        new G4PVPlacement(nullptr, G4ThreeVector(0., config.y, config.z), logic,
+        new G4PVPlacement(nullptr, G4ThreeVector(0., config.y, config.z + (config.height/2.0)), logic,
                           volumeName, logicWorld, false, 0, true);
         logic->SetVisAttributes(detVis);
         if (config.label == "IN1") fLogicDetectorInner = logic;
@@ -556,8 +562,11 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     auto* logicScatteringPlate = new G4LogicalVolume(scatteringPlate,
                                                       scatteringPlateMaterial,
                                                       "ScatteringPlate");
-    const G4ThreeVector plateCentre(0., 0.5*(gemOut2.y + gemOut3.y),
-                                    0.5*(gemOut2.z + gemOut3.z));
+    const G4double plateHeight = std::min(gemOut2.height, gemOut3.height);
+    const G4double plateYOffset = plateRadialThickness/2.0 + 10.0*cm;
+    const G4ThreeVector plateCentre(
+        0., gemOut2.y + plateYOffset,
+        gemOut2.z + plateHeight/2.0 - groundSlope*plateYOffset);
     new G4PVPlacement(nullptr, plateCentre, logicScatteringPlate,
                       "ScatteringPlate", logicWorld, false, 0, true);
 

@@ -1,7 +1,5 @@
 <use name="geant4core"/>
 <use name="geant4vis"/>
-<!-- G4VisExecutive registers the ToolsSG off-screen driver in Geant4 11.2. -->
-<use name="geant4static"/>
 <use name="root"/>
 <use name="clhep"/>
 
