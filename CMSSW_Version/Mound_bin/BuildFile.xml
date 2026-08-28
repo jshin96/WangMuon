@@ -11,8 +11,4 @@
   <bin name="wang_muon" file="main.cc DetectorConstruction.cc ActionInitialization.cc RunAction.cc TrackingAction.cc EventAction.cc PrimaryGeneratorAction.cc SteppingAction.cc "> 
     <flags CXXFLAGS="-Wno-error=missing-braces -Wno-error=unused-variable"/>
   </bin>
-  <!-- These tiny bridge files let CMSSW build the code stored in Mu_Flux_bin. -->
-  <bin name="muon_flux_spectrometer" file="MuonFluxMain.cc MuonFluxDetectorConstruction.cc MuonFluxActionInitialization.cc MuonFluxRunAction.cc MuonFluxTrackingAction.cc MuonFluxEventAction.cc MuonFluxPrimaryGeneratorAction.cc MuonFluxSteppingAction.cc">
-    <flags CXXFLAGS="-Wno-error=missing-braces -Wno-error=unused-variable"/>
-  </bin>
 </environment>
