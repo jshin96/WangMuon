@@ -1,0 +1,17 @@
+<!-- This tells CMSSW which Geant4 and ROOT toolboxes this program needs. -->
+<use name="geant4core"/>
+<use name="geant4vis"/>
+<!-- G4VisExecutive registers the ToolsSG off-screen driver in Geant4 11.2. -->
+<use name="geant4static"/>
+<use name="root"/>
+<use name="clhep"/>
+
+<lib name="G4ptl"/>
+
+<environment>
+  <!-- This local manifest is kept with the source; the active CMSSW bridge
+       registers the Mu_Flux program as muon_flux_spectrometer. -->
+  <bin name="muon_flux_spectrometer" file="main.cc DetectorConstruction.cc ActionInitialization.cc RunAction.cc TrackingAction.cc EventAction.cc PrimaryGeneratorAction.cc SteppingAction.cc "> 
+    <flags CXXFLAGS="-Wno-error=missing-braces -Wno-error=unused-variable"/>
+  </bin>
+</environment>
