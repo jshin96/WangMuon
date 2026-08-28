@@ -1,3 +1,4 @@
+conda init
 conda activate WangMuon
 cd build
 rm -rf *

@@ -3,6 +3,7 @@
 #include "RunAction.hh"      
 #include "EventAction.hh"     
 #include "SteppingAction.hh"  
+#include "TrackingAction.hh"
 
 ActionInitialization::ActionInitialization()
  : G4VUserActionInitialization()
@@ -26,4 +27,5 @@ void ActionInitialization::Build() const
     EventAction* eventAction = new EventAction(); // Holds its three GEM notes.
     SetUserAction(eventAction);
     SetUserAction(new SteppingAction(eventAction));
+    SetUserAction(new TrackingAction(runAction));
 }

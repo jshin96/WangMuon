@@ -6,7 +6,7 @@
 <lib name="G4ptl"/>
 
 <environment>
-  <bin name="wang_muon" file="main.cc DetectorConstruction.cc ActionInitialization.cc RunAction.cc TrackingAction.cc EventAction.cc PrimaryGeneratorAction.cc SteppingAction.cc "> 
+  <bin name="muon_flux" file="main.cc DetectorConstruction.cc ActionInitialization.cc RunAction.cc TrackingAction.cc EventAction.cc PrimaryGeneratorAction.cc SteppingAction.cc "> 
     <flags CXXFLAGS="-Wno-error=missing-braces -Wno-error=unused-variable"/>
   </bin>
 </environment>

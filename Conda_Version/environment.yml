@@ -1,0 +1,20 @@
+name: WangMuon
+channels:
+  - conda-forge
+dependencies:
+  # Geant4 simulation, including the UI and visualisation support requested by
+  # CMakeLists.txt (find_package(Geant4 REQUIRED ui_all vis_all)).
+  # 11.3.2 is the version found in the pre-existing WangMuon environment.
+  - geant4=11.3.2
+
+  # ROOT is used for the simulation output and by the EMML reconstruction.
+  - root
+
+  # run_emml_local.sh builds with mpicxx and launches with mpirun.
+  - openmpi
+
+  # Build tools for the CMake Geant4 executable and the MPI reconstruction.
+  - cmake
+  - make
+  - compilers
+  - pkg-config

@@ -40,6 +40,8 @@ int main(int argc, char** argv) {
         auto* ui = new G4UIExecutive(argc, argv);
         UImanager->ApplyCommand("/vis/open OGL");
         UImanager->ApplyCommand("/vis/drawVolume");
+        UImanager->ApplyCommand("/vis/scene/add/trajectories smooth");
+        UImanager->ApplyCommand("/vis/scene/endOfEventAction accumulate");
         UImanager->ApplyCommand("/vis/viewer/set/autoRefresh true");
         ui->SessionStart();
         delete ui;

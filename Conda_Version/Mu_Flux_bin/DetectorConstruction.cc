@@ -1,5 +1,6 @@
 #include "DetectorConstruction.hh"
 #include "G4Box.hh"
+#include "G4Tubs.hh"
 #include "G4Exception.hh"
 #include "G4FieldManager.hh"
 #include "G4LogicalVolume.hh"
@@ -81,7 +82,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
   // Helmholtz-pair central region: uniform 1.5 T field along global +Y.
   const auto fieldT = Env("MUON_HELMHOLTZ_FIELD_T", 1.5);
   const auto length = Env("MUON_HELMHOLTZ_LENGTH_M", 0.70) * m;
-  const auto radius = Env("MUON_HELMHOLTZ_APERTURE_CM", 40.0) * cm;
+  const auto radius = Env("MUON_HELMHOLTZ_APERTURE_CM", 30.0) * cm;
   if (fieldT < 0.0 || length <= 0.0 || radius <= 0.0) {
     G4Exception("DetectorConstruction", "InvalidField", FatalException,
                 "Field magnitude must be nonnegative; length and radius positive.");
@@ -89,13 +90,12 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
   // This box is the useful middle of a Helmholtz pair.  Inside it the field
   // is uniform; outside it the field is zero in this simplified model.
   auto* fl = new G4LogicalVolume(
-    G4Tubs* InsolidDetector1 = new G4Tubs("CylInWall1", InnerRadius, InnerRadius + detThickness, wallHeight/2.0, InstartAngle, spanAngle);
-      new G4Tubs("HelmholtzFieldSolid", 0.0, radius, length/2,0, 2*CLHEP::pi )
+      new G4Tubs("HelmholtzFieldSolid", 0.0, radius, length/2,0, 2*CLHEP::pi),
 //      new G4Box("HelmholtzFieldSolid", length/2, radius, radius),
       air, "HelmholtzField");
   new G4PVPlacement(nullptr, {}, fl, "HelmholtzField", world, false, 0, true);
   // (0, +B, 0) means the magnetic arrow points along the +Y direction.
-  auto* field = new G4UniformMagField({0.0, fieldT*tesla, 0.0});
+  auto* field = new G4UniformMagField(G4ThreeVector{0.0, fieldT*tesla, 0.0});
   auto* fieldManager = new G4FieldManager(field);
   fieldManager->CreateChordFinder(field);
   fl->SetFieldManager(fieldManager, true);
