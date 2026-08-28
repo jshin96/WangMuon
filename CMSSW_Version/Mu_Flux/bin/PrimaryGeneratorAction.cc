@@ -31,7 +31,7 @@ PrimaryGeneratorAction::PrimaryGeneratorAction()
       fSourceX(Env("MUON_BEAM_SOURCE_X_M", -1.0) * m),
       fHalfBeamSize(Env("MUON_BEAM_SIZE_CM", 8.0) * cm / 2),
       fMinEnergy(Env("MUON_BEAM_MIN_ENERGY_GEV", 1.0) * GeV),
-      fMaxEnergy(Env("MUON_BEAM_MAX_ENERGY_GEV", 100.0) * GeV) {
+      fMaxEnergy(Env("MUON_BEAM_MAX_ENERGY_GEV", 100.0) * GeV),
       fBeamTheta(Env("MUON_BEAM_THETA_SPREAD_DEG", 5.0)),
       fBeamPhi(Env("MUON_BEAM_PHI_SPREAD_DEG", 5.0)) {
   if (fHalfBeamSize <= 0.0 || fMinEnergy <= 0.0 || fMaxEnergy < fMinEnergy) {
@@ -40,9 +40,11 @@ PrimaryGeneratorAction::PrimaryGeneratorAction()
   }
   fGun->SetParticleDefinition(
       G4ParticleTable::GetParticleTable()->FindParticle("mu-"));
-  std::float theta = fBeamTheta/180*G4UniformRand()*kPi;
-  std::float phi = fBeamPhi/180*G4UniformRand()*kPi;
-  fGun->SetParticleMomentumDirection({std::cos(phi)*std::cos(theta), std::sin(phi)*std::cos(theta), std::sin(theta)});
+  const auto theta = fBeamTheta / 180.0 * G4UniformRand() * kPi;
+  const auto phi = fBeamPhi / 180.0 * G4UniformRand() * kPi;
+  fGun->SetParticleMomentumDirection(
+      {std::cos(phi)*std::cos(theta), std::sin(phi)*std::cos(theta),
+       std::sin(theta)});
 }
 
 PrimaryGeneratorAction::~PrimaryGeneratorAction() {

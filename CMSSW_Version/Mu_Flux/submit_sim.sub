@@ -5,6 +5,7 @@ executable              = run_sim_job.sh
 # retained for compatibility with old submission commands; this beam setup
 # does not use a mound or room.
 getenv                  = True
+arguments               = $(Cluster) $(Process)
 
 # Send this small instruction file to each worker computer.
 transfer_input_files    = run.mac
@@ -12,9 +13,9 @@ should_transfer_files   = YES
 when_to_transfer_output = ON_EXIT
 
 # Save anything the program says, and any errors, into these log files.
-output                  = logs/muon_flux_spectrometer_$(room_material)_$(Cluster)_$(Process).out
-error                   = logs/muon_flux_spectrometer_$(room_material)_$(Cluster)_$(Process).err
-log                     = logs/muon_flux_spectrometer_$(room_material)_$(Cluster).log
+output                  = logs/muon_flux_spectrometer_$(Cluster)_$(Process).out
+error                   = logs/muon_flux_spectrometer_$(Cluster)_$(Process).err
+log                     = logs/muon_flux_spectrometer_$(Cluster).log
 
 # Ask for one CPU and modest memory/disk space.
 request_cpus            = 1
@@ -22,7 +23,4 @@ request_memory          = 2GB
 request_disk            = 2GB
 
 # Make 100 jobs.  The old soil/air labels are harmless compatibility tags.
-queue 100 room_material in (
-    soil
-    air
-)
+queue 100

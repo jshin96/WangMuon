@@ -1,18 +1,17 @@
+<!-- CMSSW only discovers the package's top-level bin directory.  These small
+     bridge sources include the real programs kept separately in Mound/bin and
+     Mu_Flux/bin, so one `scram b` builds both executables. -->
 <use name="geant4core"/>
 <use name="geant4vis"/>
-<!-- G4VisExecutive registers the ToolsSG off-screen driver in Geant4 11.2. -->
 <use name="geant4static"/>
 <use name="root"/>
 <use name="clhep"/>
-
 <lib name="G4ptl"/>
-
 <environment>
-  <bin name="wang_muon" file="main.cc DetectorConstruction.cc ActionInitialization.cc RunAction.cc TrackingAction.cc EventAction.cc PrimaryGeneratorAction.cc SteppingAction.cc "> 
+  <bin name="wang_muon" file="MoundMain.cc MoundDetectorConstruction.cc MoundActionInitialization.cc MoundRunAction.cc MoundTrackingAction.cc MoundEventAction.cc MoundPrimaryGeneratorAction.cc MoundSteppingAction.cc">
     <flags CXXFLAGS="-Wno-error=missing-braces -Wno-error=unused-variable"/>
   </bin>
-  <!-- These tiny bridge files let CMSSW build the code stored in Mu_Flux_bin. -->
-  <bin name="muon_flux_spectrometer" file="MuonFluxMain.cc MuonFluxDetectorConstruction.cc MuonFluxActionInitialization.cc MuonFluxRunAction.cc MuonFluxTrackingAction.cc MuonFluxEventAction.cc MuonFluxPrimaryGeneratorAction.cc MuonFluxSteppingAction.cc">
+  <bin name="muon_flux_spectrometer" file="MuFluxMain.cc MuFluxDetectorConstruction.cc MuFluxActionInitialization.cc MuFluxRunAction.cc MuFluxTrackingAction.cc MuFluxEventAction.cc MuFluxPrimaryGeneratorAction.cc MuFluxSteppingAction.cc">
     <flags CXXFLAGS="-Wno-error=missing-braces -Wno-error=unused-variable"/>
   </bin>
 </environment>
