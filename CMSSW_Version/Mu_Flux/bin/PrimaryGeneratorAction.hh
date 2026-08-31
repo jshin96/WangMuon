@@ -17,7 +17,8 @@ private:
   G4double fHalfBeamSize;
   G4double fMinEnergy;
   G4double fMaxEnergy;
-  G4double fBeamTheta;
-  G4double fBeamPhi;
+  G4double fBeamThetaSpread;
+  G4double fBeamZenith;
+  G4double fBeamPhiSpread;
 };
 #endif
