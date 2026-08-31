@@ -68,14 +68,19 @@ cmsenv
 
 git clone https://github.com/jshin96/WangMuon.git . 
 
-cd CMSSW_Version/bin/
-
-wget wget https://raw.githubusercontent.com/dr4kan/EcoMug/master/EcoMug.h
-
-cd -
+cd CMSSW_Version
 
 scram b -j 8
 
+## Configurations
+Two directories, Mound and Mu_Flux, correspond to the realistic dirt mound muon tomography codes and near-horizontal muon flux measurement simulation codes. 
+
+In each directory, there is bin subdirectory that contains the source codes described above with its corresponding configuration. 
+
+There are mainly three files needed to run the simulation.
+1. run_sim_job.sh: contains environmental setups for the details of the simulation, like detector positions.
+2. submit_sim_run.sh [arg]: takes an argument for the output directory name and automatically saves the run_sim_job.sh file and output root files in there for the future note taking
+3. run.mac: tells how many muons to generate per condor_job. This heavily depends on the complexity of the simulation geometry. one with simple cylinders and boxes won't take too long, 10000 per job takes about an hour or so. 
 
 
 
