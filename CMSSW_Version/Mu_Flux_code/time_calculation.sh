@@ -1,1 +1,0 @@
-python3 calculate_live_time.py GEM_In2_2m_Rest_2m_3cmPb_4X4X3Room_BeamPhi1p5degZ0to4m/MoundTomographyData_AirRoom.root --branches GEMIn2_Valid GEMOut1_Valid GEMOut2_Valid GEMOut3_Valid --target-events 10000
