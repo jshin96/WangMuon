@@ -6,7 +6,9 @@
 #include "G4Material.hh"
 #include "G4NistManager.hh"
 #include "G4PVPlacement.hh"
+#include "G4RotationMatrix.hh"
 #include "G4SystemOfUnits.hh"
+#include "G4Tubs.hh"
 #include "G4UniformMagField.hh"
 #include "G4VisAttributes.hh"
 #include <cmath>
@@ -55,6 +57,8 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
   auto* pv = new G4PVPlacement(nullptr, {}, world, "World", nullptr,
                                 false, 0, true);
   // IN2 is nearest the magnet; defaults are -50 and -70 cm (20 cm spacing).
+  // A board's zenith is the angle of its outward normal from global +Z in the
+  // X-Z plane.  Thus 90 deg is the nominal board orientation (normal +X).
   const auto in2 = Env("MUON_GEM_IN2_X_M", -0.50) * m;
   const auto in1 = Env("MUON_GEM_IN1_X_M", -0.70) * m;
   const auto out = Env("MUON_GEM_OUT_X_M", 1.00) * m;
@@ -64,34 +68,59 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     G4Exception("DetectorConstruction", "InvalidGEMLayout", FatalException,
                 "Require IN1_X < IN2_X < 0, OUT_X > 0, and positive GEM dimensions.");
   }
-  // Make a thin, square detector board.  Its skinny side is X, so it faces -X.
-  const auto place = [&](const char* name, G4double x) {
+  // Make a thin, square detector board. Its skinny side is local X.  Each
+  // plane can be translated in global Y/Z and tilted independently for an
+  // alignment scan; X positions retain the longitudinal layout controls.
+  const auto place = [&](const char* name, G4double x,
+                         const char* ySetting, const char* zSetting,
+                         const char* zenithSetting) {
+    const auto y = Env(ySetting, 0.0) * m;
+    const auto z = Env(zSetting, 0.0) * m;
+    const auto zenithDeg = Env(zenithSetting, 90.0);
+    if (zenithDeg < 0.0 || zenithDeg > 180.0) {
+      G4Exception("DetectorConstruction", "InvalidGEMZenith", FatalException,
+                  (std::string(zenithSetting)
+                   + " must be in the inclusive range [0, 180] degrees.").c_str());
+    }
     auto* logical = new G4LogicalVolume(
         new G4Box(G4String(name) + "Solid", thick/2, size/2, size/2),
         gas, name);
-    new G4PVPlacement(nullptr, {x, 0.0, 0.0}, logical, name, world,
+    auto* rotation = new G4RotationMatrix();
+    // R_y(zenith - 90 deg) maps local +X to
+    // (sin(zenith), 0, cos(zenith)), the requested normal direction.
+    rotation->rotateY((zenithDeg - 90.0) * deg);
+    new G4PVPlacement(rotation, {x, y, z}, logical, name, world,
                       false, 0, true);
     auto* attributes = new G4VisAttributes(G4Colour(0.0, 0.8, 1.0, 0.6));
     attributes->SetForceSolid(true);
     logical->SetVisAttributes(attributes);
   };
-  place("GEMIn1", in1);
-  place("GEMIn2", in2);
-  place("GEMOut", out);
+  place("GEMIn1", in1, "MUON_GEM_IN1_Y_M", "MUON_GEM_IN1_Z_M",
+        "MUON_GEM_IN1_ZENITH_DEG");
+  place("GEMIn2", in2, "MUON_GEM_IN2_Y_M", "MUON_GEM_IN2_Z_M",
+        "MUON_GEM_IN2_ZENITH_DEG");
+  place("GEMOut", out, "MUON_GEM_OUT_Y_M", "MUON_GEM_OUT_Z_M",
+        "MUON_GEM_OUT_ZENITH_DEG");
   // Helmholtz-pair central region: uniform 1.5 T field along global +Y.
   const auto fieldT = Env("MUON_HELMHOLTZ_FIELD_T", 1.5);
   const auto length = Env("MUON_HELMHOLTZ_LENGTH_M", 0.70) * m;
-  const auto aperture = Env("MUON_HELMHOLTZ_APERTURE_CM", 40.0) * cm;
-  if (fieldT < 0.0 || length <= 0.0 || aperture <= 0.0) {
+  const auto radius = Env("MUON_HELMHOLTZ_APERTURE_CM", 40.0) * cm;
+  if (fieldT < 0.0 || length <= 0.0 || radius <= 0.0) {
     G4Exception("DetectorConstruction", "InvalidField", FatalException,
-                "Field magnitude must be nonnegative; length and aperture positive.");
+                "Field magnitude must be nonnegative; length and radius positive.");
   }
-  // This box is the useful middle of a Helmholtz pair.  Inside it the field
-  // is uniform; outside it the field is zero in this simplified model.
+  // This cylinder is the useful middle of a Helmholtz pair. Its axis is +Y,
+  // making its circular end faces normal to +Y/-Y and the aperture setting
+  // its radius in the global X-Z plane. Inside it the field is uniform;
+  // outside it the field is zero in this model.
+  auto* fieldRotation = new G4RotationMatrix();
+  fieldRotation->rotateX(-90.0 * deg);  // Local G4Tubs +Z axis -> global +Y.
   auto* fl = new G4LogicalVolume(
-      new G4Box("HelmholtzFieldSolid", length/2, aperture/2, aperture/2),
+      new G4Tubs("HelmholtzFieldSolid", 0.0, radius, length/2,
+                 0.0, 360.0 * deg),
       air, "HelmholtzField");
-  new G4PVPlacement(nullptr, {}, fl, "HelmholtzField", world, false, 0, true);
+  new G4PVPlacement(fieldRotation, {}, fl, "HelmholtzField", world,
+                    false, 0, true);
   // (0, +B, 0) means the magnetic arrow points along the +Y direction.
   auto* field = new G4UniformMagField(
       G4ThreeVector(0.0, fieldT*tesla, 0.0));

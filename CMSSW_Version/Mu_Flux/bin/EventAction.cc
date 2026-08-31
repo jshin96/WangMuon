@@ -10,11 +10,11 @@ namespace {
 // The detector's small "wobble" and a helper for measuring turns.
 G4double Resolution() {
   const char* text = std::getenv("GEM_INTRINSIC_POSITION_UM");
-  if (!text) return 100.0 * micrometer;
+  if (!text) return 1000.0 * micrometer;
   char* end = nullptr;
   const auto value = std::strtod(text, &end);
   return (end != text && *end == '\0' && value > 0.0 && std::isfinite(value))
-      ? value * micrometer : 100.0 * micrometer;
+      ? value * micrometer : 1000.0 * micrometer;
 }
 
 G4double Angle(const G4ThreeVector& first, const G4ThreeVector& second) {

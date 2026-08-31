@@ -13,20 +13,33 @@ export MUON_BEAM_SOURCE_X_M=-1.0
 export MUON_BEAM_SIZE_CM=8
 export MUON_BEAM_THETA_SPREAD_DEG=0.0
 export MUON_BEAM_PHI_SPREAD_DEG=0.0
-# 10 cm square GEMs facing -X. In2 is -50 cm and In1 -70 cm by default.
+# 10 cm square GEMs with nominal normal +X. In2 is -50 cm and In1 -70 cm by default.
 # Change these numbers here when you want to move the boards.
-export MUON_GEM_SIZE_CM=10
-export MUON_GEM_THICKNESS_MM=3
-export MUON_GEM_IN2_X_M=-0.50
-export MUON_GEM_IN1_X_M=-0.70
-export MUON_GEM_OUT_X_M=1.00
-# Helmholtz central uniform-field approximation, centred at (0,0,0), +Y.
-# The field is the invisible "push" that makes the muon turn.
+export MUON_GEM_SIZE_CM="10"
+export MUON_GEM_THICKNESS_MM="3"
+export MUON_GEM_IN2_X_M="-0.50"
+export MUON_GEM_IN1_X_M="-0.70"
+export MUON_GEM_OUT_X_M="1.00"
+# Per-board alignment controls. Coordinates are global metres. Zenith is the
+# angle between the detector normal and global +Z; 90 deg retains the nominal
+# board orientation (normal +X). Edit these assigned values for a scan.
+export MUON_GEM_IN1_Y_M="0"
+export MUON_GEM_IN1_Z_M="0"
+export MUON_GEM_IN1_ZENITH_DEG="85"
+export MUON_GEM_IN2_Y_M="0"
+export MUON_GEM_IN2_Z_M="0"
+export MUON_GEM_IN2_ZENITH_DEG="85"
+export MUON_GEM_OUT_Y_M="0"
+export MUON_GEM_OUT_Z_M="0"
+export MUON_GEM_OUT_ZENITH_DEG="85"
+# Helmholtz central uniform-field approximation: a cylinder centred at
+# (0,0,0), with axis +Y and field +Y. APERTURE is the cylinder radius.
 export MUON_HELMHOLTZ_FIELD_T=1.5
 export MUON_HELMHOLTZ_LENGTH_M=0.70
-export MUON_HELMHOLTZ_APERTURE_CM=40
-export GEM_INTRINSIC_POSITION_UM=100
+export MUON_HELMHOLTZ_APERTURE_CM=30
+export GEM_INTRINSIC_POSITION_UM=1000
 echo "Beam +X, ${MUON_BEAM_MIN_ENERGY_GEV}-${MUON_BEAM_MAX_ENERGY_GEV} GeV; GEM X [m]: ${MUON_GEM_IN1_X_M}, ${MUON_GEM_IN2_X_M}, ${MUON_GEM_OUT_X_M}"
+echo "GEM alignment (Y m, Z m, zenith deg): In1=(${MUON_GEM_IN1_Y_M}, ${MUON_GEM_IN1_Z_M}, ${MUON_GEM_IN1_ZENITH_DEG}) In2=(${MUON_GEM_IN2_Y_M}, ${MUON_GEM_IN2_Z_M}, ${MUON_GEM_IN2_ZENITH_DEG}) Out=(${MUON_GEM_OUT_Y_M}, ${MUON_GEM_OUT_Z_M}, ${MUON_GEM_OUT_ZENITH_DEG})"
 echo "Field: ${MUON_HELMHOLTZ_FIELD_T} T along +Y, length ${MUON_HELMHOLTZ_LENGTH_M} m"
 # Ask Geant4 to follow the muons.  run.mac says how many to make.
 muon_flux_spectrometer run.mac
