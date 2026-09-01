@@ -29,26 +29,25 @@ G4double Env(const char* name, G4double fallback) {
 PrimaryGeneratorAction::PrimaryGeneratorAction()
     : fGun(new G4ParticleGun(1)),
       fSourceX(Env("MUON_BEAM_SOURCE_X_M", -1.0) * m),
-      fSourceY(Env("MUON_BEAM_SOURCE_X_M", 0.0) * m),
-      fSourceZ(Env("MUON_BEAM_SOURCE_X_M", 0.0) * m),
+      fSourceY(Env("MUON_BEAM_SOURCE_Y_M", 0.0) * m),
+      fSourceZ(Env("MUON_BEAM_SOURCE_Z_M", 0.0) * m),
       fHalfBeamSize(Env("MUON_BEAM_SIZE_CM", 8.0) * cm / 2),
       fMinEnergy(Env("MUON_BEAM_MIN_ENERGY_GEV", 1.0) * GeV),
       fMaxEnergy(Env("MUON_BEAM_MAX_ENERGY_GEV", 100.0) * GeV),
+      fBeamPhiSpread(Env("MUON_BEAM_PHI_HALF_SPREAD_DEG", 5.0)),
       fBeamThetaSpread(Env("MUON_BEAM_THETA_HALF_SPREAD_DEG", 5.0)),
-      fBeamPhiSpread(Env("MUON_BEAM_PHI_HALF_SPREAD_DEG", 5.0)) {
-      fBeamZenith(Env("MUON_BEAM_ZENITH_DEG", 85.0)),
+      fBeamZenith(Env("MUON_BEAM_ZENITH_DEG", 85.0)) {
   if (fHalfBeamSize <= 0.0 || fMinEnergy <= 0.0 || fMaxEnergy < fMinEnergy) {
     G4Exception("PrimaryGeneratorAction", "InvalidBeam", FatalException,
                 "Require positive beam size and 0 < min energy <= max energy.");
   }
   fGun->SetParticleDefinition(
       G4ParticleTable::GetParticleTable()->FindParticle("mu-"));
-  const auto theta = ((90.0-fBeamZenith) / 180.0 * kPi) + fBeamThetaSpread / 180.0 * (1.0 - (2.0 * G4UniformRand()) * kPi;
-  const auto phi = fBeamPhiSpread / 180.0 * (1.0 - (2.0 * G4UniformRand()) * kPi;
+  const auto theta = ((90.0-fBeamZenith) / 180.0 * kPi) + fBeamThetaSpread / 180.0 * (1.0 - (2.0 * G4UniformRand()) * kPi);
+  const auto phi = fBeamPhiSpread / 180.0 * (1.0 - (2.0 * G4UniformRand()) * kPi);
   fGun->SetParticleMomentumDirection(
       {std::cos(phi)*std::cos(theta), std::sin(phi)*std::cos(theta),
-       -std::sin(theta)});
-}
+       -std::sin(theta)});}
 
 PrimaryGeneratorAction::~PrimaryGeneratorAction() {
   delete fGun;
