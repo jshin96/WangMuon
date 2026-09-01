@@ -839,6 +839,4 @@ CMakeFiles/muon_flux.dir/ActionInitialization.cc.o: \
   /Users/John/Desktop/WangMuon/Conda_Version/Mu_Flux_bin/EventAction.hh \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4UserEventAction.hh \
   /Users/John/Desktop/WangMuon/Conda_Version/Mu_Flux_bin/SteppingAction.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4UserSteppingAction.hh \
-  /Users/John/Desktop/WangMuon/Conda_Version/Mu_Flux_bin/TrackingAction.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4UserTrackingAction.hh
+  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4UserSteppingAction.hh

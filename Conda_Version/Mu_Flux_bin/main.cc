@@ -40,6 +40,11 @@ int main(int argc, char** argv) {
         auto* ui = new G4UIExecutive(argc, argv);
         UImanager->ApplyCommand("/vis/open OGL");
         UImanager->ApplyCommand("/vis/drawVolume");
+        // Geometry drawing does not automatically include particle paths.
+        // Add trajectories before the user issues /run/beamOn so each muon
+        // remains visible in the OpenGL scene.
+        UImanager->ApplyCommand("/vis/scene/add/trajectories smooth");
+        UImanager->ApplyCommand("/vis/scene/endOfEventAction accumulate 100");
         UImanager->ApplyCommand("/vis/viewer/set/autoRefresh true");
         ui->SessionStart();
         delete ui;

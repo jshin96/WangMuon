@@ -34,26 +34,37 @@ PrimaryGeneratorAction::PrimaryGeneratorAction()
       fHalfBeamSize(Env("MUON_BEAM_SIZE_CM", 8.0) * cm / 2),
       fMinEnergy(Env("MUON_BEAM_MIN_ENERGY_GEV", 1.0) * GeV),
       fMaxEnergy(Env("MUON_BEAM_MAX_ENERGY_GEV", 100.0) * GeV),
-      fBeamPhiSpread(Env("MUON_BEAM_PHI_HALF_SPREAD_DEG", 5.0)),
-      fBeamThetaSpread(Env("MUON_BEAM_THETA_HALF_SPREAD_DEG", 5.0)),
-      fBeamZenith(Env("MUON_BEAM_ZENITH_DEG", 85.0)) {
+      fBeamPhiSpread(Env("MUON_BEAM_PHI_HALF_SPREAD_DEG", 3.0)),
+      fBeamThetaSpread(Env("MUON_BEAM_THETA_HALF_SPREAD_DEG", 3.0)),
+      fBeamZenith(Env("MUON_BEAM_ZENITH_DEG", 90.0)) {
   if (fHalfBeamSize <= 0.0 || fMinEnergy <= 0.0 || fMaxEnergy < fMinEnergy) {
     G4Exception("PrimaryGeneratorAction", "InvalidBeam", FatalException,
                 "Require positive beam size and 0 < min energy <= max energy.");
   }
-  fGun->SetParticleDefinition(
-      G4ParticleTable::GetParticleTable()->FindParticle("mu-"));
-  const auto theta = ((90.0-fBeamZenith) / 180.0 * kPi) + fBeamThetaSpread / 180.0 * (1.0 - (2.0 * G4UniformRand()) * kPi);
-  const auto phi = fBeamPhiSpread / 180.0 * (1.0 - (2.0 * G4UniformRand()) * kPi);
-  fGun->SetParticleMomentumDirection(
-      {std::cos(phi)*std::cos(theta), std::sin(phi)*std::cos(theta),
-       -std::sin(theta)});}
+}
 
 PrimaryGeneratorAction::~PrimaryGeneratorAction() {
   delete fGun;
 }
 
 void PrimaryGeneratorAction::GeneratePrimaries(G4Event*e){
+  // Generate a new charge and direction for every muon/event.
+  if (G4UniformRand() > 0.5) {
+    fGun->SetParticleDefinition(
+        G4ParticleTable::GetParticleTable()->FindParticle("mu-"));
+  } else {
+    fGun->SetParticleDefinition(
+        G4ParticleTable::GetParticleTable()->FindParticle("mu+"));
+  }
+
+  const auto theta = ((90.0-fBeamZenith) / 180.0 * kPi)
+      + fBeamThetaSpread / 180.0 * (1.0 - (2.0 * G4UniformRand()) * kPi);
+  const auto phi = fBeamPhiSpread / 180.0
+      * (1.0 - (2.0 * G4UniformRand()) * kPi);
+  fGun->SetParticleMomentumDirection(
+      {std::cos(phi)*std::cos(theta), std::sin(phi)*std::cos(theta),
+       -std::sin(theta)});
+
   // Pick a random little spot on the square beam face, but always shoot +X.
   const auto y = (2.0 * G4UniformRand() - 1.0) * fHalfBeamSize;
   const auto z = (2.0 * G4UniformRand() - 1.0) * fHalfBeamSize;

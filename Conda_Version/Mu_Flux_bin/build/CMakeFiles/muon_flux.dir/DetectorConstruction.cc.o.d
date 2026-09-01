@@ -856,8 +856,6 @@ CMakeFiles/muon_flux.dir/DetectorConstruction.cc.o: \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Visible.hh \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Visible.icc \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Box.icc \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Tubs.hh \
-  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Tubs.icc \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4FieldManager.hh \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4FieldManager.icc \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4LogicalVolume.hh \
@@ -923,6 +921,8 @@ CMakeFiles/muon_flux.dir/DetectorConstruction.cc.o: \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Exp.hh \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4PVPlacement.hh \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4SystemOfUnits.hh \
+  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Tubs.hh \
+  /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Tubs.icc \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4UniformMagField.hh \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4MagneticField.hh \
   /opt/homebrew/Caskroom/miniforge/base/envs/WangMuon/include/Geant4/G4Field.hh \
