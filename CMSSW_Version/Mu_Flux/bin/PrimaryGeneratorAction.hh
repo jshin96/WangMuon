@@ -14,6 +14,8 @@ public:
 private:
   G4ParticleGun* fGun;  // The particle-making tool.
   G4double fSourceX;
+  G4double fSourceY;
+  G4double fSourceZ;
   G4double fHalfBeamSize;
   G4double fMinEnergy;
   G4double fMaxEnergy;

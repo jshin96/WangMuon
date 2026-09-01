@@ -34,9 +34,9 @@ PrimaryGeneratorAction::PrimaryGeneratorAction()
       fHalfBeamSize(Env("MUON_BEAM_SIZE_CM", 8.0) * cm / 2),
       fMinEnergy(Env("MUON_BEAM_MIN_ENERGY_GEV", 1.0) * GeV),
       fMaxEnergy(Env("MUON_BEAM_MAX_ENERGY_GEV", 100.0) * GeV),
+      fBeamZenith(Env("MUON_BEAM_ZENITH_DEG", 85.0)),
       fBeamThetaSpread(Env("MUON_BEAM_THETA_HALF_SPREAD_DEG", 5.0)),
       fBeamPhiSpread(Env("MUON_BEAM_PHI_HALF_SPREAD_DEG", 5.0)) {
-      fBeamZenith(Env("MUON_BEAM_ZENITH_DEG", 85.0)),
   if (fHalfBeamSize <= 0.0 || fMinEnergy <= 0.0 || fMaxEnergy < fMinEnergy) {
     G4Exception("PrimaryGeneratorAction", "InvalidBeam", FatalException,
                 "Require positive beam size and 0 < min energy <= max energy.");
