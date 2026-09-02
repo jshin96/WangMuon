@@ -1,7 +1,7 @@
 #include "RunAction.hh"
 #include "G4AnalysisManager.hh"
 RunAction::RunAction(){
-  // Make a ROOT table.  Each row is one muon that reached all three GEMs.
+  // Make a ROOT table.  Each row is a muon that reached GEMIn1.
   auto* analysis = G4AnalysisManager::Instance();
   analysis->SetDefaultFileType("root");
   analysis->CreateNtuple("MuonHits", "Three-GEM beam spectrometer");
@@ -21,6 +21,10 @@ RunAction::RunAction(){
   }
   analysis->CreateNtupleDColumn("TruthDeflectionAngle_rad");
   analysis->CreateNtupleDColumn("RecoDeflectionChordAngle_rad");
+  // Magnitudes reconstructed from the field bend and from Geant4 at GEMIn2.
+  analysis->CreateNtupleDColumn("RecoMomentum_GeV");
+  analysis->CreateNtupleDColumn("TruthMomentum_GeV");
+  analysis->CreateNtupleDColumn("TruthMinusRecoMomentum_GeV");
   analysis->FinishNtuple();
 }
 void RunAction::BeginOfRunAction(const G4Run*){ // Open the file before the first muon.

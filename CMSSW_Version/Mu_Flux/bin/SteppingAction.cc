@@ -1,14 +1,17 @@
 #include "SteppingAction.hh"
 #include "EventAction.hh"
 #include "G4MuonMinus.hh"
+#include "G4MuonPlus.hh"
 #include "G4Step.hh"
 #include "G4Track.hh"
 SteppingAction::SteppingAction(EventAction* eventAction)
     : fEventAction(eventAction) {}
 
 void SteppingAction::UserSteppingAction(const G4Step* s){
-  // Ignore everything except the original negative muon when it enters a board.
-  if (s->GetTrack()->GetDefinition() != G4MuonMinus::MuonMinusDefinition() ||
+  // Record either charge of the original muon; the bend fit infers its sign.
+  const auto* particle = s->GetTrack()->GetDefinition();
+  if ((particle != G4MuonMinus::MuonMinusDefinition()
+       && particle != G4MuonPlus::MuonPlusDefinition()) ||
       s->GetTrack()->GetParentID() != 0 ||
       s->GetPreStepPoint()->GetStepStatus() != fGeomBoundary) return;
   auto* volume = s->GetPreStepPoint()->GetTouchableHandle()->GetVolume();

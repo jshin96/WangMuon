@@ -58,7 +58,7 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event*e){
   }
 
   const auto theta = ((90.0-fBeamZenith) / 180.0 * kPi)
-      + fBeamThetaSpread / 180.0 * (1.0 - (2.0 * G4UniformRand()) * kPi);
+      + (fBeamThetaSpread / 180.0 * (1.0 - (2.0 * G4UniformRand()) * kPi));
   const auto phi = fBeamPhiSpread / 180.0
       * (1.0 - (2.0 * G4UniformRand()) * kPi);
   fGun->SetParticleMomentumDirection(
