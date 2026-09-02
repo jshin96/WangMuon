@@ -14,7 +14,7 @@ G4double Resolution() {
   if (!text) return 1000.0 * micrometer;
   char* end = nullptr;
   const auto value = std::strtod(text, &end);
-  return (end != text && *end == '\0' && value > 0.0 && std::isfinite(value))
+  return (end != text && *end == '\0' && value >= 0.0 && std::isfinite(value))
       ? value * micrometer : 1000.0 * micrometer;
 }
 
@@ -195,9 +195,7 @@ G4double ReconstructedMomentum(const G4ThreeVector& incomingDirection,
   const auto leverArmRatio = outgoingLeverArm / upstreamLeverArm;
   const auto bendingNormal = tangent.cross(fieldDirection);
   const auto lateralResolution = std::abs(bendingNormal.z()) * Resolution();
-  const auto bendUncertainty = lateralResolution * std::sqrt(
-      1.0 + (1.0 + leverArmRatio) * (1.0 + leverArmRatio)
-          + leverArmRatio * leverArmRatio);
+  const auto bendUncertainty = lateralResolution * std::sqrt(1.0 + (1.0 + leverArmRatio) * (1.0 + leverArmRatio) + leverArmRatio * leverArmRatio);
   const auto minimumSignificance = MinimumBendSignificance();
   if (!std::isfinite(minimumSignificance)
       || std::abs(transverseChord) < minimumSignificance * bendUncertainty) {
