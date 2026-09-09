@@ -168,6 +168,7 @@ void EventAction::BeginOfEventAction(const G4Event*) {
 void EventAction::EndOfEventAction(const G4Event* event) {
     // Preserve the established incoming two-plane trigger; the GEM trigger
     // response is available separately through the GEM*_Valid branches.
+//    if (!(fIn2.hit && fOut1.hit && fOut2.hit && fOut3.hit)) return;
     if (!(fIn2.hit)) return;
     Digitize(fIn1); Digitize(fIn2); Digitize(fOut1); Digitize(fOut2); Digitize(fOut3);
 

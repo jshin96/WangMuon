@@ -127,8 +127,8 @@ PrimaryGeneratorAction::PrimaryGeneratorAction(RunAction* runAction)
     const G4double sourceDirectionHalfWidthDeg = ReadFiniteEnvironmentDouble(
         "MOUND_SOURCE_DIRECTION_PHI_HALF_WIDTH_DEG", 30.0);
     if (sourceClearance <= 0.0 || sourceElevationMax <= sourceElevationMin
-        || sourceArcHalfWidthDeg <= 0.0 || sourceArcHalfWidthDeg >= 90.0
-        || sourceDirectionHalfWidthDeg <= 0.0 || sourceDirectionHalfWidthDeg >= 90.0) {
+        || sourceArcHalfWidthDeg <= 0.0 || !(sourceArcHalfWidthDeg < 90.0 || sourceArcHalfWidthDeg == 180.0)
+        || sourceDirectionHalfWidthDeg <= 0.0 || !(sourceDirectionHalfWidthDeg < 90.0 || sourceDirectionHalfWidthDeg == 180.0) ) {
         G4Exception("PrimaryGeneratorAction", "InvalidFlatSource", FatalException,
                     "Source clearance must be positive, Z max must exceed Z min, and source angular half-widths must be between 0 and 90 degrees.");
     }
@@ -157,8 +157,12 @@ PrimaryGeneratorAction::PrimaryGeneratorAction(RunAction* runAction)
     fEcoMug->SetMaximumPhi((180.0 + sourceDirectionHalfWidthDeg)*kPi/180.0);
     fEcoMug->SetMinimumMomentum(minimumMomentumGeV);
     fEcoMug->SetMaximumMomentum(maximumMomentumGeV);
-    fEcoMug->SetMinimumTheta(70.0*kPi/180.0);
-    fEcoMug->SetMaximumTheta(80.0*kPi/180.0);
+    const G4double MuonZenithMinDeg = ReadFiniteEnvironmentDouble(
+        "MUON_ZENITH_MIN_DEG", 70.0);
+    const G4double MuonZenithMaxDeg = ReadFiniteEnvironmentDouble(
+        "MUON_ZENITH_MAX_DEG", 90.0);
+    fEcoMug->SetMinimumTheta(MuonZenithMinDeg*kPi/180.0);
+    fEcoMug->SetMaximumTheta(MuonZenithMaxDeg*kPi/180.0);
 
     const G4double horizontalRateHzM2 = ReadFiniteEnvironmentDouble(
         "MOUND_HORIZONTAL_MUON_RATE_HZ_M2", 129.0);

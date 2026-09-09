@@ -36,6 +36,12 @@ export MOUND_ROOM_MATERIAL="${ROOM_MATERIAL}"
 export MOUND_ROOM_SIZE_X_M="4"
 export MOUND_ROOM_SIZE_Y_M="4"
 export MOUND_ROOM_SIZE_Z_M="3"
+export MOUND_HALL_SIZE_X_M="1"
+export MOUND_HALL_SIZE_Y_M="3"
+export MOUND_HALL_SIZE_Z_M="1"
+export MOUND_HALL_SIZE_Z_M="1"
+export MOUND_ROOM_ELEVATION_M="1"
+export SOIL_DENSITY_G_PER_CUBIC_CM="1.6"
 # Surrounding granite/soil wall thickness in cm, applied to every room face.
 export MOUND_ROOM_WALL_THICKNESS_CM="50"
 # Positive angle means terrain descends as global +Y increases.  Use 0 for a
@@ -51,7 +57,7 @@ export MOUND_GROUND_INCLINE_DEG=15
 export MOUND_SCATTERING_PLATE_MATERIAL="lead"
 # Plate thickness in cm.  The historical variable name is retained even when
 # the selected plate material is not tungsten.
-export MOUND_TUNGSTEN_THICKNESS_CM="3"
+export MOUND_TUNGSTEN_THICKNESS_CM="5"
 
 
 # Flat GEM planes: width is global X; height is global Z; Y is the global
@@ -63,19 +69,19 @@ export MOUND_GEM_IN1_Y_M="-27"
 export MOUND_GEM_IN1_Z_M="1.0"
 export MOUND_GEM_IN2_WIDTH_M="2"
 export MOUND_GEM_IN2_HEIGHT_M="2"
-export MOUND_GEM_IN2_Y_M="-23"
+export MOUND_GEM_IN2_Y_M="-21"
 export MOUND_GEM_IN2_Z_M="1"
 export MOUND_GEM_OUT1_WIDTH_M="2"
 export MOUND_GEM_OUT1_HEIGHT_M="2"
-export MOUND_GEM_OUT1_Y_M="23"
+export MOUND_GEM_OUT1_Y_M="21"
 export MOUND_GEM_OUT1_Z_M="0.5"
 export MOUND_GEM_OUT2_WIDTH_M="2"
 export MOUND_GEM_OUT2_HEIGHT_M="2"
-export MOUND_GEM_OUT2_Y_M="25"
+export MOUND_GEM_OUT2_Y_M="22"
 export MOUND_GEM_OUT2_Z_M="0.5"
 export MOUND_GEM_OUT3_WIDTH_M="2"
 export MOUND_GEM_OUT3_HEIGHT_M="2"
-export MOUND_GEM_OUT3_Y_M="26.04"
+export MOUND_GEM_OUT3_Y_M="23.04"
 export MOUND_GEM_OUT3_Z_M="0.5"
 
 
@@ -87,11 +93,11 @@ export MOUND_GEM_OUT3_Z_M="0.5"
 # source position, in metres; the arc half-width is degrees.
 export MOUND_SOURCE_CLEARANCE_M="0.1"
 export MOUND_SOURCE_Z_MIN_M="0"
-export MOUND_SOURCE_Z_MAX_M="4"
-export MOUND_SOURCE_UPSTREAM_ARC_HALF_WIDTH_DEG="1.5"
+export MOUND_SOURCE_Z_MAX_M="7"
+export MOUND_SOURCE_UPSTREAM_ARC_HALF_WIDTH_DEG="2.5"
 # Direction proposal cone about +Y (phi=90 deg). Exact IN1/IN2 ray checks
 # remain the final acceptance, so do not make this cone too narrow.
-export MOUND_SOURCE_DIRECTION_PHI_HALF_WIDTH_DEG="3"
+export MOUND_SOURCE_DIRECTION_PHI_HALF_WIDTH_DEG="4.0"
 
 # Absolute flux normalization written to RunMetadata.  This is the observed
 # local horizontal muon rate in Hz/m^2; 129 is EcoMug's default sea-level
@@ -120,9 +126,9 @@ export GEM_THRESHOLD_FC="0.0001"
 # Readout strip/pad pitch in mm.
 export GEM_STRIP_PITCH_MM="0.40"
 # High-charge, single-coordinate position-resolution limit in micrometres.
-export GEM_INTRINSIC_POSITION_UM="1000"
+export GEM_INTRINSIC_POSITION_UM="700"
 # High-charge timing-resolution limit in ns.
-export GEM_INTRINSIC_TIME_NS="4"
+export GEM_INTRINSIC_TIME_NS="5"
 # Low-charge discriminator time-walk/jitter scale in ns.
 export GEM_THRESHOLD_TIME_JITTER_NS="20"
 

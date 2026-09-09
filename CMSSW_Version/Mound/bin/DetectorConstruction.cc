@@ -8,6 +8,8 @@
 #include "G4Tubs.hh"
 #include "G4Ellipsoid.hh"
 #include "G4IntersectionSolid.hh"
+#include "G4SubtractionSolid.hh"
+#include "G4UnionSolid.hh"
 #include "G4RotationMatrix.hh"
 #include "G4Transform3D.hh"
 #include "G4TessellatedSolid.hh"
@@ -169,7 +171,10 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     G4Element* elNa = nistManager->FindOrBuildElement("Na");
     G4Element* elMg = nistManager->FindOrBuildElement("Mg");
 
-    G4Material* soil = new G4Material("DrySoil", 1.6 * g/cm3, 7);
+
+    const G4double soilDensity = ReadFiniteEnvironmentDouble(
+    "SOIL_DENSITY_G_PER_CUBIC_CM", 1.6);
+    G4Material* soil = new G4Material("DrySoil", soilDensity * g/cm3, 7);
     soil->AddElement(elO,  0.51); 
     soil->AddElement(elSi, 0.28); 
     soil->AddElement(elAl, 0.07); 
@@ -296,46 +301,99 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
         "MOUND_ROOM_SIZE_Y_M", 4.0)*m;
     const G4double roomZ = ReadFiniteEnvironmentDouble(
         "MOUND_ROOM_SIZE_Z_M", 4.0)*m;
+    const G4double roomElevation = ReadFiniteEnvironmentDouble(
+        "MOUND_ROOM_ELEVATION_M", 1.0)*m;
+    const G4double hallX = ReadFiniteEnvironmentDouble(
+        "MOUND_HALL_SIZE_X_M", 1.0)*m;
+    const G4double hallY = ReadFiniteEnvironmentDouble(
+        "MOUND_HALL_SIZE_Y_M", 3.0)*m;
+    const G4double hallZ = ReadFiniteEnvironmentDouble(
+        "MOUND_HALL_SIZE_Z_M", 1.0)*m;
     if (roomX <= 0.0 || roomY <= 0.0 || roomZ <= 0.0
+        || hallX <= 0.0 || hallY <= 0.0 || hallZ <= 0.0
         || wallThickness <= 0.0) {
-        G4Exception("DetectorConstruction::Construct", "InvalidRoomSize",
+        G4Exception("DetectorConstruction::Construct", "InvalidRoomHallSize",
                     FatalException,
-                    "MOUND_ROOM_SIZE_X_M, MOUND_ROOM_SIZE_Y_M, MOUND_ROOM_SIZE_Z_M, and MOUND_ROOM_WALL_THICKNESS_CM must be positive.");
+                    "Room and hall dimensions, and MOUND_ROOM_WALL_THICKNESS_CM, must be positive.");
     }
-
-    G4Box* solidRockWall = new G4Box("SolidRockWall",
-                                     roomX/2 + wallThickness,
-                                     roomY/2 + wallThickness,
-                                     roomZ/2 + wallThickness);
-    // The air-filled target includes its physical granite wall.  The
-    // soil-filled control replaces both wall and cavity with mound soil, so
-    // it has no material contrast or artificial internal boundary.
-    G4Material* wallMaterial = roomMaterialName == "air" ? rock : soil;
-    G4LogicalVolume* logicRockWall = new G4LogicalVolume(solidRockWall, wallMaterial,
-                                                          "LogicRockWall");
-
-    G4Box* solidRoom = new G4Box("SolidRoom", roomX/2, roomY/2, roomZ/2);
-    G4Material* roomMaterial = roomMaterialName == "air" ? air : soil;
-    G4LogicalVolume* logicRoom = new G4LogicalVolume(solidRoom, roomMaterial, "LogicRoom");
 
     // The room and its wall remain vertical in global Z.  Centre the room
     // using the requested separation of the two terrain-contact points.
     // Place the outer wall so its -Y, -Z edge lies on the inclined terrain.
     const G4double roomCentreY =
         0.5 * (lowestContactY + highestContactY);
+    const G4double hallCentreY =
+        roomCentreY + (roomY/2) + (2*wallThickness) + (hallY/2) + (1*cm);
     const G4double wallHalfY = roomY/2 + wallThickness;
     const G4double wallHalfZ = roomZ/2 + wallThickness;
     const G4double wallMinusYEdgeGroundZ =
         -groundSlope * (roomCentreY - wallHalfY);
     const G4double wallCenterZ = wallMinusYEdgeGroundZ + wallHalfZ;
+    const G4double hallCenterZ = wallCenterZ - (roomZ/2) + (hallZ/2);
+
+    // Build the room and hallway in one local coordinate system whose origin
+    // is the room centre.  The Boolean shell avoids overlapping sibling rock
+    // volumes, while the doorway cutter makes the air region continuous.
+    const G4ThreeVector hallOffset(0., hallCentreY - roomCentreY,
+                                   hallCenterZ - wallCenterZ);
+    auto* roomEnvelope = new G4Box("SolidRoomEnvelope",
+                                   roomX/2 + wallThickness,
+                                   roomY/2 + wallThickness,
+                                   roomZ/2 + wallThickness);
+    auto* hallEnvelope = new G4Box("SolidHallEnvelope",
+                                   hallX/2 + wallThickness,
+                                   hallY/2 + wallThickness,
+                                   hallZ/2 + wallThickness);
+    auto* solidOuterShell = new G4UnionSolid("SolidRoomHallEnvelope",
+                                              roomEnvelope, hallEnvelope,
+                                              nullptr, hallOffset);
+
+    auto* solidRoom = new G4Box("SolidRoom", roomX/2, roomY/2, roomZ/2);
+    auto* solidHall = new G4Box("SolidHall", hallX/2, hallY/2, hallZ/2);
+    auto* solidRoomHallAir = new G4UnionSolid("SolidRoomHallAir", solidRoom,
+                                               solidHall, nullptr, hallOffset);
+
+    const G4double roomAirEndY = roomY/2;
+    const G4double hallAirStartY = hallOffset.y() - hallY/2;
+    if (hallAirStartY <= roomAirEndY) {
+        G4Exception("DetectorConstruction::Construct", "InvalidHallPlacement",
+                    FatalException,
+                    "The hall must begin beyond the room's +Y face.");
+    }
+    // Extend the cutter by a micrometre into both air boxes, eliminating
+    // coincident Boolean surfaces at the two doorway interfaces.
+    constexpr G4double doorwayBooleanOverlap = 1.0*um;
+    auto* solidDoorway = new G4Box(
+        "SolidHallDoorway", hallX/2,
+        (hallAirStartY - roomAirEndY)/2 + doorwayBooleanOverlap, hallZ/2);
+    const G4ThreeVector doorwayOffset(
+        0., (roomAirEndY + hallAirStartY)/2, hallOffset.z());
+    solidRoomHallAir = new G4UnionSolid("SolidRoomHallAirWithDoorway",
+                                         solidRoomHallAir, solidDoorway,
+                                         nullptr, doorwayOffset);
+    auto* solidRockWall = new G4SubtractionSolid("SolidRoomHallRockWall",
+                                                  solidOuterShell,
+                                                  solidRoomHallAir);
+
+    // The air-filled target includes granite walls.  The soil-filled control
+    // keeps identical boundaries and dimensions, but introduces no material
+    // contrast relative to the mound.
+    G4Material* wallMaterial = roomMaterialName == "air" ? rock : soil;
+    G4Material* roomMaterial = roomMaterialName == "air" ? air : soil;
+    G4LogicalVolume* logicRockWall = new G4LogicalVolume(
+        solidRockWall, wallMaterial, "LogicRockWall");
+    G4LogicalVolume* logicRoomHall = new G4LogicalVolume(
+        solidRoomHallAir, roomMaterial, "LogicRoomHall");
+
     if (includeRoom) {
-        new G4PVPlacement(nullptr, G4ThreeVector(0, 0, 0), logicRoom,
-                          "PhysRoom", logicRockWall, false, 0, true);
-        new G4PVPlacement(nullptr,
-                          G4ThreeVector(0, roomCentreY,
-                                        wallCenterZ - moundPlacementZ),
-                          logicRockWall,
+        const G4ThreeVector roomHallPlacement(
+            0., roomCentreY, wallCenterZ - moundPlacementZ + roomElevation);
+        new G4PVPlacement(nullptr, roomHallPlacement, logicRockWall,
                           "PhysRockWall", logicMound, false, 0, true);
+        // Keep the existing volume name so room-entry accounting in
+        // SteppingAction includes both the room and the hallway.
+        new G4PVPlacement(nullptr, roomHallPlacement, logicRoomHall,
+                          "PhysRoom", logicMound, false, 0, true);
         G4cout << "Room centre: y=" << roomCentreY/m
                << " m; interior size (x,y,z)=(" << roomX/m << ", "
                << roomY/m << ", " << roomZ/m << ") m"
@@ -595,7 +653,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
     G4VisAttributes* roomVis = new G4VisAttributes(G4Colour(0.0, 0.8, 1.0, 1.0)); // Air interior
     roomVis->SetForceSolid(true);
-    logicRoom->SetVisAttributes(roomVis);
+    logicRoomHall->SetVisAttributes(roomVis);
 
 //    G4VisAttributes* detVis = new G4VisAttributes(G4Colour(0.0, 0.8, 1.0, 0.5)); // Cyan detectors
 //    detVis->SetForceSolid(true);
