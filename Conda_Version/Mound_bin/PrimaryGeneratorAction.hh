@@ -3,6 +3,7 @@
 
 #include "G4VUserPrimaryGeneratorAction.hh"
 #include "G4ParticleGun.hh"
+#include "G4ThreeVector.hh"
 #include "EcoMug.h" // <-- Include the new library
 
 class G4Event;
@@ -27,9 +28,14 @@ private:
     EcoMug* fEcoMug;
     RunAction* fRunAction;
     G4double fGroundSlope;
+    G4double fMoundRadius;
     FlatPlane fIn1;
     FlatPlane fIn2;
     G4long fMaximumAttempts;
+    G4bool fTopNormalizationMode;
+    G4double fTopWidth;
+    G4double fTopLength;
+    G4ThreeVector fTopCenter;
 };
 
 #endif

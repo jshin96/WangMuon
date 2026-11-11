@@ -1,3 +1,4 @@
+#include <cmath>
 #include "RunAction.hh"
 #include "G4AnalysisManager.hh"
 #include "G4ios.hh"
@@ -5,7 +6,7 @@
 RunAction::RunAction() : G4UserRunAction() {
     auto analysisManager = G4AnalysisManager::Instance();
     analysisManager->SetDefaultFileType("root"); // Or "csv"
-    analysisManager->CreateNtuple("MuonHits", "Five-plane truth and parameterised GEM data");
+    analysisManager->CreateNtuple("MuonHits", "Side/top truth and parameterised GEM data");
     
     // PrimaryGeneratorAction records the number of EcoMug attempts with
     // FillNtupleDColumn, so this must be a double column.  Keeping the types
@@ -28,6 +29,15 @@ RunAction::RunAction() : G4UserRunAction() {
     analysisManager->CreateNtupleDColumn("In2_Px");
     analysisManager->CreateNtupleDColumn("In2_Py");
     analysisManager->CreateNtupleDColumn("In2_Pz");
+    // Zenith relative to the downward vertical (-Z), evaluated from the
+    // incoming truth momentum at IN2.  Units are degrees.
+    analysisManager->CreateNtupleDColumn("IncomingZenithAngle_deg");
+
+    // Air-only truth-exit slice just beyond the mound.  It deliberately has
+    // no momentum, GEM, or trigger-validity fields.
+    analysisManager->CreateNtupleDColumn("Out0_X");
+    analysisManager->CreateNtupleDColumn("Out0_Y");
+    analysisManager->CreateNtupleDColumn("Out0_Z");
 
     // Detector Out 1 (Closer to mound, +Y)
     analysisManager->CreateNtupleDColumn("Out1_X");
@@ -71,6 +81,30 @@ RunAction::RunAction() : G4UserRunAction() {
         analysisManager->CreateNtupleDColumn(G4String(plane) + "_Charge_fC");
         analysisManager->CreateNtupleIColumn(G4String(plane) + "_Valid");
     }
+    // Optional horizontal monitor at the mound top. These branches remain
+    // present (and NaN/invalid) in the default side-cylinder mode so both
+    // source modes retain one stable ROOT schema.
+    analysisManager->CreateNtupleDColumn("Top_X");
+    analysisManager->CreateNtupleDColumn("Top_Y");
+    analysisManager->CreateNtupleDColumn("Top_Z");
+    analysisManager->CreateNtupleDColumn("Top_Px");
+    analysisManager->CreateNtupleDColumn("Top_Py");
+    analysisManager->CreateNtupleDColumn("Top_Pz");
+    analysisManager->CreateNtupleDColumn("TopIncomingZenithAngle_deg");
+    analysisManager->CreateNtupleIColumn("TopValid");
+    analysisManager->CreateNtupleIColumn("ReachedRoomInterior");
+    analysisManager->CreateNtupleDColumn("GEMTop_X");
+    analysisManager->CreateNtupleDColumn("GEMTop_Y");
+    analysisManager->CreateNtupleDColumn("GEMTop_Z");
+    analysisManager->CreateNtupleDColumn("GEMTop_Time_ns");
+    analysisManager->CreateNtupleDColumn("GEMTop_Edep_keV");
+    analysisManager->CreateNtupleDColumn("GEMTop_Charge_fC");
+    analysisManager->CreateNtupleIColumn("GEMTop_Valid");
+    // Additive primary-particle fields. Keeping these at the end preserves
+    // every pre-existing column index used by the cosmic-muon analysis.
+    analysisManager->CreateNtupleIColumn("PrimaryPDG");
+    analysisManager->CreateNtupleDColumn("In2_KineticEnergy_GeV");
+    analysisManager->CreateNtupleDColumn("Out1_KineticEnergy_GeV");
     analysisManager->FinishNtuple();
 
     // One row per run.  Source quantities refer to the fully configured
@@ -90,6 +124,18 @@ RunAction::RunAction() : G4UserRunAction() {
     analysisManager->CreateNtupleDColumn("RecordedFiveGEMRate_Hz");
     analysisManager->CreateNtupleDColumn("EquivalentLiveTime_s");
     analysisManager->CreateNtupleDColumn("DaysFor10000FiveGEM");
+    analysisManager->CreateNtupleIColumn("SourceMode"); // 0: side muon, 1: top muon, 2: neutron
+    analysisManager->CreateNtupleIColumn("RecordedTopTruth");
+    analysisManager->CreateNtupleIColumn("RecordedTopGEM");
+    analysisManager->CreateNtupleIColumn("TopReachedRoomInterior");
+    analysisManager->CreateNtupleDColumn("TopTruthRate_Hz");
+    analysisManager->CreateNtupleDColumn("TopGEMRate_Hz");
+    analysisManager->CreateNtupleDColumn("TopRoomRate_Hz");
+    analysisManager->CreateNtupleDColumn("DaysFor10000TopGEM");
+    analysisManager->CreateNtupleDColumn("TopRoomTransmission");
+    analysisManager->CreateNtupleDColumn("TopRoomTransmissionError");
+    analysisManager->CreateNtupleDColumn("NeutronMinKineticEnergy_GeV");
+    analysisManager->CreateNtupleDColumn("NeutronMaxKineticEnergy_GeV");
     analysisManager->FinishNtuple();
 }
 
@@ -103,6 +149,9 @@ void RunAction::BeginOfRunAction(const G4Run*) {
     fTotalTrials = 0;
     fMaximumTrials = 0;
     fFiveGEMEvents = 0;
+    fTopTruthEvents = 0;
+    fTopGEMEvents = 0;
+    fTopRoomEvents = 0;
     auto analysisManager = G4AnalysisManager::Instance();
     analysisManager->OpenFile("MoundTomographyData");
 }
@@ -122,10 +171,21 @@ void RunAction::EndOfRunAction(const G4Run*) {
         ? 1.0/static_cast<G4double>(fTotalTrials) : 0.0;
     const G4double in1In2RateHz = sourceRateHz*fAcceptedPrimaries*trialFraction;
     const G4double recordedRateHz = sourceRateHz*fFiveGEMEvents*trialFraction;
+    const G4double topTruthRateHz = sourceRateHz*fTopTruthEvents*trialFraction;
+    const G4double topGEMRateHz = sourceRateHz*fTopGEMEvents*trialFraction;
+    const G4double topRoomRateHz = sourceRateHz*fTopRoomEvents*trialFraction;
     const G4double equivalentLiveTime = sourceRateHz > 0.0
         ? static_cast<G4double>(fTotalTrials)/sourceRateHz : 0.0;
     const G4double daysFor10000 = recordedRateHz > 0.0
         ? 10000.0/(recordedRateHz*86400.0) : 0.0;
+    const G4double daysFor10000Top = topGEMRateHz > 0.0
+        ? 10000.0/(topGEMRateHz*86400.0) : 0.0;
+    const G4double topRoomTransmission = fTopTruthEvents > 0
+        ? static_cast<G4double>(fTopRoomEvents)/fTopTruthEvents : 0.0;
+    const G4double topRoomTransmissionError = fTopTruthEvents > 0
+        ? std::sqrt(topRoomTransmission*(1.0 - topRoomTransmission)
+                    /static_cast<G4double>(fTopTruthEvents))
+        : 0.0;
 
     constexpr G4int metadataNtuple = 1;
     G4int column = 0;
@@ -143,12 +203,30 @@ void RunAction::EndOfRunAction(const G4Run*) {
     analysisManager->FillNtupleDColumn(metadataNtuple, column++, recordedRateHz);
     analysisManager->FillNtupleDColumn(metadataNtuple, column++, equivalentLiveTime);
     analysisManager->FillNtupleDColumn(metadataNtuple, column++, daysFor10000);
+    analysisManager->FillNtupleIColumn(metadataNtuple, column++, fSourceMode);
+    analysisManager->FillNtupleIColumn(metadataNtuple, column++, fTopTruthEvents);
+    analysisManager->FillNtupleIColumn(metadataNtuple, column++, fTopGEMEvents);
+    analysisManager->FillNtupleIColumn(metadataNtuple, column++, fTopRoomEvents);
+    analysisManager->FillNtupleDColumn(metadataNtuple, column++, topTruthRateHz);
+    analysisManager->FillNtupleDColumn(metadataNtuple, column++, topGEMRateHz);
+    analysisManager->FillNtupleDColumn(metadataNtuple, column++, topRoomRateHz);
+    analysisManager->FillNtupleDColumn(metadataNtuple, column++, daysFor10000Top);
+    analysisManager->FillNtupleDColumn(metadataNtuple, column++, topRoomTransmission);
+    analysisManager->FillNtupleDColumn(metadataNtuple, column++, topRoomTransmissionError);
+    analysisManager->FillNtupleDColumn(metadataNtuple, column++,
+                                       fNeutronMinKineticEnergyGeV);
+    analysisManager->FillNtupleDColumn(metadataNtuple, column++,
+                                       fNeutronMaxKineticEnergyGeV);
     analysisManager->AddNtupleRow(metadataNtuple);
 
     G4cout << "RUN_METADATA source_rate_hz=" << sourceRateHz
            << " +/- " << sourceRateErrorHz
            << " total_trials=" << fTotalTrials
            << " recorded_five_gem=" << fFiveGEMEvents
+           << " recorded_top_gem=" << fTopGEMEvents
+           << " top_reached_room=" << fTopRoomEvents
+           << " top_room_transmission=" << topRoomTransmission
+           << " +/- " << topRoomTransmissionError
            << " recorded_rate_per_day=" << recordedRateHz*86400.0
            << " equivalent_live_time_s=" << equivalentLiveTime
            << " days_for_10000_five_gem=" << daysFor10000 << G4endl;
@@ -166,8 +244,30 @@ void RunAction::SetSourceFluxMetadata(G4double ratePerAreaHzM2,
     fRateIntegrationPoints = integrationPoints;
 }
 
+void RunAction::SetSourceMode(G4int sourceMode) {
+    fSourceMode = sourceMode;
+}
+
+void RunAction::SetNeutronEnergyRange(G4double minimumGeV,
+                                      G4double maximumGeV) {
+    fNeutronMinKineticEnergyGeV = minimumGeV;
+    fNeutronMaxKineticEnergyGeV = maximumGeV;
+}
+
 void RunAction::RecordFiveGEMEvent() {
     ++fFiveGEMEvents;
+}
+
+void RunAction::RecordTopTruthEvent() {
+    ++fTopTruthEvents;
+}
+
+void RunAction::RecordTopGEMEvent() {
+    ++fTopGEMEvents;
+}
+
+void RunAction::RecordTopRoomEvent() {
+    ++fTopRoomEvents;
 }
 
 void RunAction::RecordPrimaryGeneration(G4int eventID, G4long trials,

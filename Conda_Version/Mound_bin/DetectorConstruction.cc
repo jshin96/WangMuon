@@ -6,6 +6,7 @@
 #include "G4Element.hh"
 #include "G4Box.hh"
 #include "G4Tubs.hh"
+#include "G4CutTubs.hh"
 #include "G4Ellipsoid.hh"
 #include "G4IntersectionSolid.hh"
 #include "G4SubtractionSolid.hh"
@@ -21,6 +22,7 @@
 #include "G4ios.hh"
 #include <cstdlib>
 #include <cmath>
+#include <limits>
 #include <string>
 #include <algorithm>
 #include <cctype>
@@ -41,6 +43,29 @@ G4double ReadFiniteEnvironmentDouble(const char* name, G4double fallback) {
                     FatalException, message.c_str());
         return fallback;
     }
+}
+
+// Parse geometry switches explicitly so a misspelled setting cannot silently
+// change the material configuration used for a flux comparison.
+bool ReadEnvironmentBoolean(const char* name, bool fallback) {
+    const char* setting = std::getenv(name);
+    if (setting == nullptr) return fallback;
+
+    std::string value(setting);
+    std::transform(value.begin(), value.end(), value.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    if (value == "1" || value == "true" || value == "yes" || value == "on") {
+        return true;
+    }
+    if (value == "0" || value == "false" || value == "no" || value == "off") {
+        return false;
+    }
+
+    const std::string message = std::string(name)
+        + " must be one of 0/1, false/true, no/yes, or off/on.";
+    G4Exception("DetectorConstruction::Construct", "InvalidGeometrySwitch",
+                FatalException, message.c_str());
+    return fallback;
 }
 
 // Resolve convenient metal names while still permitting any Geant4/NIST
@@ -98,8 +123,28 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 {
     // Keep the source and detector setup identical for the room/no-room
     // comparison.  Only the material geometry changes between the two runs.
-    const char* roomSetting = std::getenv("MOUND_INCLUDE_ROOM");
-    const bool includeRoom = !(roomSetting && std::string(roomSetting) == "0");
+    const bool includeRoom = ReadEnvironmentBoolean("MOUND_INCLUDE_ROOM", true);
+    // Keep the access hall independently configurable: it otherwise adds a
+    // substantial granite shell and changes the areal density being compared.
+    const bool includeHall = ReadEnvironmentBoolean("MOUND_INCLUDE_HALL", false);
+    const bool topNormalizationMode = ReadEnvironmentBoolean(
+        "MOUND_TOP_NORMALIZATION_MODE", false);
+    std::string primaryMode = "muon";
+    if (const char* setting = std::getenv("MOUND_PRIMARY_MODE")) {
+        primaryMode = setting;
+    }
+    std::transform(primaryMode.begin(), primaryMode.end(), primaryMode.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    if (primaryMode != "muon" && primaryMode != "neutron") {
+        G4Exception("DetectorConstruction::Construct", "InvalidPrimaryMode",
+                    FatalException,
+                    "MOUND_PRIMARY_MODE must be either 'muon' or 'neutron'.");
+    }
+    if (includeHall && !includeRoom) {
+        G4Exception("DetectorConstruction::Construct", "HallWithoutRoom",
+                    FatalException,
+                    "MOUND_INCLUDE_HALL=1 requires MOUND_INCLUDE_ROOM=1.");
+    }
     // Select the room fill at runtime so air-filled and soil-filled samples
     // use the identical compiled geometry and detector/source setup.
     std::string roomMaterialName = "air";
@@ -135,8 +180,15 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     const G4double groundIncline = groundInclineDeg * deg;
     const G4double groundSlope = std::tan(groundIncline);
     G4cout << "Mound room geometry: " << (includeRoom ? "enabled" : "disabled")
-           << "; room/wall materials: "
-           << (roomMaterialName == "air" ? "air/granite" : "soil/soil")
+           << "; hall: " << (includeHall ? "enabled" : "disabled")
+           << "; source mode: "
+           << (primaryMode == "neutron" ? "directed neutron beam"
+               : (topNormalizationMode ? "top-sky normalization"
+                                       : "side-cylinder tomography"))
+           << "; room material: " << roomMaterialName
+           << "; room/hall wall material: "
+           << (roomMaterialName == "air" ? "granite" : "soil")
+           << "; concentric wall material: granite"
            << G4endl;
     G4cout << "Ground inclination: " << groundInclineDeg
            << " deg (positive is downhill in +Y)" << G4endl;
@@ -212,10 +264,20 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     // highest ground elevation.  Intersect it with the half-space above the terrain so
     // the mound and ground touch but never overlap as sibling volumes.
     G4VSolid* solidMound = nullptr;
-    constexpr G4double moundRadius = 19.5*m;
-    constexpr G4double moundHeight = 8.0*m;
+    const G4double moundRadius = ReadFiniteEnvironmentDouble(
+        "MOUND_RADIUS_M", 19.5)*m;
+    const G4double moundHeight = ReadFiniteEnvironmentDouble(
+        "MOUND_HEIGHT_M", 8.0)*m;
+    if (moundRadius <= 0.0 || moundHeight <= 0.0) {
+        G4Exception("DetectorConstruction::Construct", "InvalidMoundSize",
+                    FatalException,
+                    "MOUND_RADIUS_M and MOUND_HEIGHT_M must be positive.");
+    }
+    G4cout << "Mound dimensions: radius=" << moundRadius/m
+           << " m, height=" << moundHeight/m << " m" << G4endl;
     constexpr G4double moundGroundSeparation = 1.0*um;
     G4double moundPlacementZ = 0.0;
+    G4double moundVerticalSemiAxis = moundHeight;
     // The two points where the mound/ground contact curve reaches its
     // highest and lowest global elevations.  They also define the room's
     // centre along Y.
@@ -233,11 +295,10 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
         moundPlacementZ = -maximumGroundElevation;
         // Use the declared mound height as the clearance above the highest
         // part of the terrain; do not introduce a second height parameter.
-        const G4double ellipsoidHeight =
-            moundHeight + 2.0 * maximumGroundElevation;
+        moundVerticalSemiAxis = moundHeight + 2.0 * maximumGroundElevation;
         auto* moundEnvelope =
             new G4Ellipsoid("SolidMoundEnvelope", moundRadius, moundRadius,
-                            ellipsoidHeight, 0., ellipsoidHeight);
+                            moundVerticalSemiAxis, 0., moundVerticalSemiAxis);
 
         // In mound-local coordinates the ground plane is
         // z = -groundSlope*y - moundPlacementZ.  A rotated box supplies the
@@ -266,7 +327,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
         // Solve the ellipse/ground-plane intersection at x=0.  The result
         // remains valid for any mound radius and nonzero ground inclination.
-        const G4double heightRatio = maximumGroundElevation / ellipsoidHeight;
+        const G4double heightRatio = maximumGroundElevation / moundVerticalSemiAxis;
         const G4double contactDenominator =
             heightRatio*heightRatio + 1.0;
         const G4double uphillContactFactor =
@@ -282,7 +343,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
         G4cout << "Inclined mound analytic envelope: base Z="
                << moundPlacementZ/m << " m, apex Z="
-               << (moundPlacementZ + ellipsoidHeight)/m
+               << (moundPlacementZ + moundVerticalSemiAxis)/m
                << " m (" << moundHeight/m
                << " m above highest ground)" << G4endl;
     }
@@ -310,7 +371,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     const G4double hallZ = ReadFiniteEnvironmentDouble(
         "MOUND_HALL_SIZE_Z_M", 1.0)*m;
     if (roomX <= 0.0 || roomY <= 0.0 || roomZ <= 0.0
-        || hallX <= 0.0 || hallY <= 0.0 || hallZ <= 0.0
+        || (includeHall && (hallX <= 0.0 || hallY <= 0.0 || hallZ <= 0.0))
         || wallThickness <= 0.0) {
         G4Exception("DetectorConstruction::Construct", "InvalidRoomHallSize",
                     FatalException,
@@ -322,55 +383,66 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     // Place the outer wall so its -Y, -Z edge lies on the inclined terrain.
     const G4double roomCentreY =
         0.5 * (lowestContactY + highestContactY);
-    const G4double hallCentreY =
-        roomCentreY + (roomY/2) + (2*wallThickness) + (hallY/2) + (1*cm);
     const G4double wallHalfY = roomY/2 + wallThickness;
     const G4double wallHalfZ = roomZ/2 + wallThickness;
     const G4double wallMinusYEdgeGroundZ =
         -groundSlope * (roomCentreY - wallHalfY);
     const G4double wallCenterZ = wallMinusYEdgeGroundZ + wallHalfZ;
-    const G4double hallCenterZ = wallCenterZ - (roomZ/2) + (hallZ/2);
 
-    // Build the room and hallway in one local coordinate system whose origin
-    // is the room centre.  The Boolean shell avoids overlapping sibling rock
-    // volumes, while the doorway cutter makes the air region continuous.
-    const G4ThreeVector hallOffset(0., hallCentreY - roomCentreY,
-                                   hallCenterZ - wallCenterZ);
+    // Build the room in a local coordinate system whose origin is its centre.
+    // When enabled, add the hall to the same Boolean solid.  The shell avoids
+    // overlapping sibling rock volumes, while the doorway cutter makes the
+    // air region continuous.
     auto* roomEnvelope = new G4Box("SolidRoomEnvelope",
                                    roomX/2 + wallThickness,
                                    roomY/2 + wallThickness,
                                    roomZ/2 + wallThickness);
-    auto* hallEnvelope = new G4Box("SolidHallEnvelope",
-                                   hallX/2 + wallThickness,
-                                   hallY/2 + wallThickness,
-                                   hallZ/2 + wallThickness);
-    auto* solidOuterShell = new G4UnionSolid("SolidRoomHallEnvelope",
-                                              roomEnvelope, hallEnvelope,
-                                              nullptr, hallOffset);
-
     auto* solidRoom = new G4Box("SolidRoom", roomX/2, roomY/2, roomZ/2);
-    auto* solidHall = new G4Box("SolidHall", hallX/2, hallY/2, hallZ/2);
-    auto* solidRoomHallAir = new G4UnionSolid("SolidRoomHallAir", solidRoom,
-                                               solidHall, nullptr, hallOffset);
+    G4VSolid* solidOuterShell = roomEnvelope;
+    G4VSolid* solidRoomHallAir = solidRoom;
+    // Minimum cylindrical inner radius that clears the complete room/hall
+    // envelope in the horizontal plane, measured from the room centre.
+    G4double roomHallOuterRadius = std::hypot(
+        roomX/2 + wallThickness, roomY/2 + wallThickness);
+    if (includeHall) {
+        const G4double hallCentreY = roomCentreY + roomY/2
+            + 2*wallThickness + hallY/2 + 1*cm;
+        const G4double hallCenterZ = wallCenterZ - roomZ/2 + hallZ/2;
+        const G4ThreeVector hallOffset(0., hallCentreY - roomCentreY,
+                                       hallCenterZ - wallCenterZ);
+        auto* hallEnvelope = new G4Box("SolidHallEnvelope",
+                                       hallX/2 + wallThickness,
+                                       hallY/2 + wallThickness,
+                                       hallZ/2 + wallThickness);
+        solidOuterShell = new G4UnionSolid("SolidRoomHallEnvelope",
+                                            roomEnvelope, hallEnvelope,
+                                            nullptr, hallOffset);
+        auto* solidHall = new G4Box("SolidHall", hallX/2, hallY/2, hallZ/2);
+        solidRoomHallAir = new G4UnionSolid("SolidRoomHallAir", solidRoom,
+                                             solidHall, nullptr, hallOffset);
 
-    const G4double roomAirEndY = roomY/2;
-    const G4double hallAirStartY = hallOffset.y() - hallY/2;
-    if (hallAirStartY <= roomAirEndY) {
-        G4Exception("DetectorConstruction::Construct", "InvalidHallPlacement",
-                    FatalException,
-                    "The hall must begin beyond the room's +Y face.");
+        const G4double roomAirEndY = roomY/2;
+        const G4double hallAirStartY = hallOffset.y() - hallY/2;
+        if (hallAirStartY <= roomAirEndY) {
+            G4Exception("DetectorConstruction::Construct", "InvalidHallPlacement",
+                        FatalException,
+                        "The hall must begin beyond the room's +Y face.");
+        }
+        // Extend the cutter by a micrometre into both air boxes, eliminating
+        // coincident Boolean surfaces at the two doorway interfaces.
+        constexpr G4double doorwayBooleanOverlap = 1.0*um;
+        auto* solidDoorway = new G4Box(
+            "SolidHallDoorway", hallX/2,
+            (hallAirStartY - roomAirEndY)/2 + doorwayBooleanOverlap, hallZ/2);
+        const G4ThreeVector doorwayOffset(
+            0., (roomAirEndY + hallAirStartY)/2, hallOffset.z());
+        solidRoomHallAir = new G4UnionSolid("SolidRoomHallAirWithDoorway",
+                                             solidRoomHallAir, solidDoorway,
+                                             nullptr, doorwayOffset);
+        roomHallOuterRadius = std::max(roomHallOuterRadius, std::hypot(
+            hallX/2 + wallThickness,
+            std::abs(hallOffset.y()) + hallY/2 + wallThickness));
     }
-    // Extend the cutter by a micrometre into both air boxes, eliminating
-    // coincident Boolean surfaces at the two doorway interfaces.
-    constexpr G4double doorwayBooleanOverlap = 1.0*um;
-    auto* solidDoorway = new G4Box(
-        "SolidHallDoorway", hallX/2,
-        (hallAirStartY - roomAirEndY)/2 + doorwayBooleanOverlap, hallZ/2);
-    const G4ThreeVector doorwayOffset(
-        0., (roomAirEndY + hallAirStartY)/2, hallOffset.z());
-    solidRoomHallAir = new G4UnionSolid("SolidRoomHallAirWithDoorway",
-                                         solidRoomHallAir, solidDoorway,
-                                         nullptr, doorwayOffset);
     auto* solidRockWall = new G4SubtractionSolid("SolidRoomHallRockWall",
                                                   solidOuterShell,
                                                   solidRoomHallAir);
@@ -401,6 +473,123 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
                << "; outer-wall -Y,-Z edge terrain z="
                << wallMinusYEdgeGroundZ/m << " m"
                << G4endl;
+
+        // Two complete vertical annular walls surround the room/hall. The
+        // configured radii are their inner radii; each wall extends outward
+        // by the configured common radial thickness. Both cut faces follow
+        // the inclined terrain. The upper face is positioned to retain the
+        // requested soil cover around the complete outer circumference.
+        const G4double concentricWallThickness = ReadFiniteEnvironmentDouble(
+            "MOUND_CONCENTRIC_WALL_THICKNESS_CM", 50.0)*cm;
+        constexpr G4double concentricWallTopClearance = 50.0*cm;
+        constexpr G4double concentricWallGroundClearance =
+            2.0*moundGroundSeparation;
+        const G4double concentricWallRadii[] = {
+            ReadFiniteEnvironmentDouble(
+                "MOUND_CONCENTRIC_WALL1_RADIUS_M", 6.0)*m,
+            ReadFiniteEnvironmentDouble(
+                "MOUND_CONCENTRIC_WALL2_RADIUS_M", 10.0)*m};
+        if (concentricWallThickness <= 0.0
+            || concentricWallRadii[0] <= roomHallOuterRadius
+            || concentricWallRadii[1] <= concentricWallRadii[0]
+                                      + concentricWallThickness
+            || concentricWallRadii[1] <= 0.0) {
+            G4Exception("DetectorConstruction::Construct",
+                        "InvalidConcentricWallRadii", FatalException,
+                        "Concentric-wall thickness must be positive; inner radii must clear the room/hall, be positive, and be separated by more than the configured wall thickness.");
+        }
+
+        auto* concentricWallVis = new G4VisAttributes(
+            G4Colour(0.55, 0.55, 0.65, 0.75));
+        concentricWallVis->SetForceSolid(true);
+        for (G4int wallIndex = 0; wallIndex < 2; ++wallIndex) {
+            const G4double innerRadius = concentricWallRadii[wallIndex];
+            const G4double outerRadius = innerRadius
+                + concentricWallThickness;
+            // The wall is centred on the room, while the mound ellipsoid is
+            // centred at global X=Y=0. This is the largest mound-centred
+            // radius touched anywhere on the outer cylindrical face.
+            const G4double maximumMoundRadius =
+                std::abs(roomCentreY) + outerRadius;
+            if (maximumMoundRadius >= moundRadius) {
+                G4Exception("DetectorConstruction::Construct",
+                            "ConcentricWallOutsideMound", FatalException,
+                            "A concentric wall reaches or exceeds the mound footprint; reduce its configured inner radius.");
+            }
+            // The top face follows the ground plane. Find the minimum mound
+            // surface height along the outer rim in ground-normal coordinates.
+            // The expression is concave in sin(phi), so its minimum occurs at
+            // one of the two ends of the downhill/uphill diameter.
+            G4double minimumSurfaceAlongGroundNormal =
+                std::numeric_limits<G4double>::max();
+            for (const G4double side : {-1.0, 1.0}) {
+                const G4double y = roomCentreY + side*outerRadius;
+                // At these two extrema the ring point lies on the Y axis
+                // (x=0), so its mound-centred radius is abs(y).
+                const G4double radialDistance = std::abs(y);
+                const G4double surfaceZ = moundPlacementZ
+                    + moundVerticalSemiAxis*std::sqrt(
+                        1.0 - std::pow(radialDistance/moundRadius, 2));
+                minimumSurfaceAlongGroundNormal = std::min(
+                    minimumSurfaceAlongGroundNormal,
+                    surfaceZ + groundSlope*y);
+            }
+            const G4double wallTopAtAxisZ =
+                minimumSurfaceAlongGroundNormal - groundSlope*roomCentreY
+                - concentricWallTopClearance;
+            // G4CutTubs lets the lower face follow z_ground=-slope*y. Its
+            // outward low-face normal points below that plane. Keep a small
+            // separation above the mound/ground boundary for stable navigation.
+            const G4double wallBottomAtAxisZ = -groundSlope*roomCentreY
+                + concentricWallGroundClearance;
+            const G4double lowestWallBottomZ = wallBottomAtAxisZ
+                - std::abs(groundSlope)*outerRadius;
+            const G4double highestWallBottomZ = wallBottomAtAxisZ
+                + std::abs(groundSlope)*outerRadius;
+            const G4double wallHeightAtAxis = wallTopAtAxisZ - wallBottomAtAxisZ;
+            if (wallHeightAtAxis <= 0.0) {
+                G4cout << "Concentric wall geometry at failure: wall="
+                       << wallIndex + 1 << "; inner/outer radius="
+                       << innerRadius/m << "/" << outerRadius/m
+                       << " m; mound radius/height=" << moundRadius/m
+                       << "/" << moundHeight/m
+                       << " m; incline=" << groundInclineDeg
+                       << " deg; calculated wall height="
+                       << wallHeightAtAxis/m << " m" << G4endl;
+                G4Exception("DetectorConstruction::Construct",
+                            "ConcentricWallHasNoHeight", FatalException,
+                            "A concentric wall has no usable height below the mound surface; reduce its configured inner radius or increase mound height.");
+            }
+            const G4String wallNumber = std::to_string(wallIndex + 1);
+            const G4ThreeVector lowerFaceNormal(
+                0.0, -std::sin(groundIncline), -std::cos(groundIncline));
+            const G4ThreeVector upperFaceNormal(
+                0.0, std::sin(groundIncline), std::cos(groundIncline));
+            auto* solidConcentricWall = new G4CutTubs(
+                "SolidConcentricWall" + wallNumber,
+                innerRadius, outerRadius, wallHeightAtAxis/2.0,
+                0.0, 360.0*deg, lowerFaceNormal, upperFaceNormal);
+            auto* logicConcentricWall = new G4LogicalVolume(
+                solidConcentricWall, rock,
+                "LogicConcentricWall" + wallNumber);
+            const G4double wallCentreGlobalZ =
+                0.5*(wallBottomAtAxisZ + wallTopAtAxisZ);
+            new G4PVPlacement(
+                nullptr,
+                G4ThreeVector(0., roomCentreY,
+                              wallCentreGlobalZ - moundPlacementZ),
+                logicConcentricWall, "PhysConcentricWall" + wallNumber,
+                logicMound, false, wallIndex, true);
+            logicConcentricWall->SetVisAttributes(concentricWallVis);
+            G4cout << "Concentric wall " << wallIndex + 1
+                   << ": inner/outer radius=" << innerRadius/m << "/"
+                   << outerRadius/m << " m; height at axis="
+                   << wallHeightAtAxis/m << " m; global bottom Z range="
+                   << lowestWallBottomZ/m << " to "
+                   << highestWallBottomZ/m << " m; top Z at axis="
+                   << wallTopAtAxisZ/m << " m; mound cover >= "
+                   << concentricWallTopClearance/cm << " cm" << G4endl;
+        }
     }
 
     // =================================================================
@@ -460,7 +649,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
                       logicGround, "PhysGround", logicWorld, false, 0, true);
 
     // =================================================================
-    // 5. The Detectors (4 Layers on Y-Axis, flanking the 26.5m mound)
+    // 5. Flat GEM detector planes around the mound
     // =================================================================
 
 
@@ -536,13 +725,11 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
 
     // -----------------------------------------------------
-    // 5. Flat GEM detector planes
+    // 5. Air truth-exit plane and flat GEM detector planes
     // -----------------------------------------------------
-    // Planes are vertical, with their thin dimension along global Y.  Each
-    // plane has an independent X width, Z height, Y centre, and elevation
-    // above the inclined ground at that Y coordinate.
-    // This makes the measured five-plane layout explicit instead of deriving
-    // it from two angular sectors of cylindrical shells.
+    // Side GEM planes are vertical at fixed global Y. Width follows global X,
+    // height follows global Z, and the configured Z value is the bottom-edge
+    // vertical clearance above local ground at that Y.
     constexpr G4double detectorThickness = 1.0*cm;
     struct FlatGEMConfig {
         G4String label;
@@ -561,12 +748,13 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
         const G4String gemLabel(label);
         const G4double y = readGEMSetting(gemLabel, "_Y_M", defaultY)*m;
         const G4double elevation = readGEMSetting(gemLabel, "_Z_M", 1.0)*m;
+        const G4double height = readGEMSetting(gemLabel, "_HEIGHT_M", 1.0)*m;
         return FlatGEMConfig{
             gemLabel,
             readGEMSetting(gemLabel, "_WIDTH_M", 1.0)*m,
-            readGEMSetting(gemLabel, "_HEIGHT_M", 1.0)*m,
+            height,
             y,
-            elevation - groundSlope*y};
+            elevation - groundSlope*y + height/2.0};
     };
     const FlatGEMConfig gemIn1 = makeGEMConfig("IN1", -27.0);
     const FlatGEMConfig gemIn2 = makeGEMConfig("IN2", -23.0);
@@ -583,6 +771,37 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
         }
     }
 
+    // Out0 is a geometric boundary, not an instrumented GEM plane.  It is
+    // one micrometre of the same air as the world and spans the complete
+    // above-ground world cross-section, so it adds no material other than
+    // replacing an equal thickness of world air.  Muons selected by the
+    // incoming (-Y) telescope which subsequently reach OUT1 must cross this
+    // plane after leaving the +Y side of the mound.
+    constexpr G4double out0Thickness = 1.0*um;
+    constexpr G4double worldBoundaryMargin = 1.0*um;
+    const G4double out0Y = ReadFiniteEnvironmentDouble("MOUND_OUT0_Y_M", 20.0)*m;
+    if (out0Y <= moundRadius || out0Y >= gemOut1.y) {
+        G4Exception("DetectorConstruction::Construct", "InvalidOut0Position",
+                    FatalException,
+                    "MOUND_OUT0_Y_M must be outside the +Y mound edge and before the configured OUT1 plane.");
+    }
+    const G4double out0GroundZ = -groundSlope*out0Y;
+    const G4double out0BottomZ = out0GroundZ + worldBoundaryMargin;
+    const G4double out0TopZ = worldSizeZ/2.0 - worldBoundaryMargin;
+    if (out0BottomZ >= out0TopZ) {
+        G4Exception("DetectorConstruction::Construct", "InvalidOut0Extent",
+                    FatalException,
+                    "The Out0 air slice does not fit above the ground within the world volume.");
+    }
+    auto* out0Logic = new G4LogicalVolume(
+        new G4Box("Out0AirSlice", worldSizeXY/2.0 - worldBoundaryMargin,
+                  out0Thickness/2.0, (out0TopZ - out0BottomZ)/2.0),
+        air, "DetectorOut0");
+    new G4PVPlacement(nullptr,
+                      G4ThreeVector(0., out0Y, (out0TopZ + out0BottomZ)/2.0),
+                      out0Logic, "DetectorOut0", logicWorld, false, 0, true);
+    out0Logic->SetVisAttributes(G4VisAttributes::GetInvisible());
+
     G4VisAttributes* detVis = new G4VisAttributes(G4Colour(0.0, 0.8, 1.0, 0.5));
     detVis->SetForceSolid(true);
     for (const auto& config : gemConfigs) {
@@ -597,7 +816,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
             new G4Box("Flat" + volumeName, config.width/2.0,
                       detectorThickness/2.0, config.height/2.0),
             gemGas, volumeName);
-        new G4PVPlacement(nullptr, G4ThreeVector(0., config.y, config.z + (config.height/2.0)), logic,
+        new G4PVPlacement(nullptr, G4ThreeVector(0., config.y, config.z), logic,
                           volumeName, logicWorld, false, 0, true);
         logic->SetVisAttributes(detVis);
         if (config.label == "IN1") fLogicDetectorInner = logic;
@@ -620,13 +839,52 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
     auto* logicScatteringPlate = new G4LogicalVolume(scatteringPlate,
                                                       scatteringPlateMaterial,
                                                       "ScatteringPlate");
-    const G4double plateHeight = std::min(gemOut2.height, gemOut3.height);
     const G4double plateYOffset = plateRadialThickness/2.0 + 10.0*cm;
     const G4ThreeVector plateCentre(
         0., gemOut2.y + plateYOffset,
-        gemOut2.z + plateHeight/2.0 - groundSlope*plateYOffset);
-    new G4PVPlacement(nullptr, plateCentre, logicScatteringPlate,
+        gemOut2.z - groundSlope*plateYOffset);
+    new G4PVPlacement(nullptr,
+                      plateCentre, logicScatteringPlate,
                       "ScatteringPlate", logicWorld, false, 0, true);
+
+    // Optional horizontal flux monitor above the mound.  In normalization
+    // mode PrimaryGeneratorAction switches EcoMug to a sky plane immediately
+    // above this detector and RunMetadata records its rate and live time.
+    if (topNormalizationMode) {
+        const G4double topWidth = ReadFiniteEnvironmentDouble(
+            "MOUND_TOP_GEM_WIDTH_M", 2.0)*m;
+        const G4double topLength = ReadFiniteEnvironmentDouble(
+            "MOUND_TOP_GEM_LENGTH_M", 2.0)*m;
+        const G4double topX = ReadFiniteEnvironmentDouble(
+            "MOUND_TOP_GEM_X_M", 0.0)*m;
+        const G4double topY = ReadFiniteEnvironmentDouble(
+            "MOUND_TOP_GEM_Y_M", roomCentreY/m)*m;
+        const G4double topClearance = ReadFiniteEnvironmentDouble(
+            "MOUND_TOP_GEM_CLEARANCE_M", 0.1)*m;
+        const G4double radialFraction =
+            (topX*topX + topY*topY)/(moundRadius*moundRadius);
+        if (topWidth <= 0.0 || topLength <= 0.0 || topClearance < 0.0
+            || radialFraction >= 1.0) {
+            G4Exception("DetectorConstruction::Construct", "InvalidTopGEM",
+                        FatalException,
+                        "Top-GEM dimensions must be positive, clearance non-negative, and its centre inside the mound footprint.");
+        }
+        const G4double moundSurfaceZ = moundPlacementZ
+            + moundVerticalSemiAxis*std::sqrt(1.0 - radialFraction);
+        const G4ThreeVector topCentre(
+            topX, topY, moundSurfaceZ + topClearance + detectorThickness/2.0);
+        auto* logicTop = new G4LogicalVolume(
+            new G4Box("FlatDetectorTop", topWidth/2.0, topLength/2.0,
+                      detectorThickness/2.0),
+            gemGas, "DetectorTop");
+        new G4PVPlacement(nullptr, topCentre, logicTop, "DetectorTop",
+                          logicWorld, false, 0, true);
+        logicTop->SetVisAttributes(detVis);
+        G4cout << "Top normalization GEM: centre_m=("
+               << topCentre.x()/m << "," << topCentre.y()/m << ","
+               << topCentre.z()/m << ") size_m=(" << topWidth/m << ","
+               << topLength/m << ")" << G4endl;
+    }
 
 
 

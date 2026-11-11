@@ -15,6 +15,7 @@ public:
 
 private:
     EventAction* fEventAction; // Store the pointer
+    G4bool fNeutronMode;
 };
 
 #endif

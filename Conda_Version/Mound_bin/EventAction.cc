@@ -1,7 +1,9 @@
 #include <limits>
 #include <cmath>
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
+#include <string>
 #include "EventAction.hh"
 #include "RunAction.hh"
 #include "G4Event.hh"
@@ -66,6 +68,35 @@ G4double ReadResponseSetting(const char* name, G4double fallback) {
         ? value : fallback;
 }
 
+G4double ReadFiniteSetting(const char* name, G4double fallback) {
+    const char* text = std::getenv(name);
+    if (!text) return fallback;
+    char* end = nullptr;
+    const double value = std::strtod(text, &end);
+    return (end != text && *end == '\0' && std::isfinite(value))
+        ? value : fallback;
+}
+
+bool ReadBooleanSetting(const char* name, bool fallback) {
+    const char* text = std::getenv(name);
+    if (!text) return fallback;
+    std::string value(text);
+    std::transform(value.begin(), value.end(), value.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    if (value == "1" || value == "true" || value == "yes" || value == "on") return true;
+    if (value == "0" || value == "false" || value == "no" || value == "off") return false;
+    return fallback;
+}
+
+bool ReadNeutronMode() {
+    const char* text = std::getenv("MOUND_PRIMARY_MODE");
+    if (!text) return false;
+    std::string value(text);
+    std::transform(value.begin(), value.end(), value.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return value == "neutron";
+}
+
 void FillTruth(G4AnalysisManager* manager, G4int& column,
                const EventAction::Hit& hit) {
     manager->FillNtupleDColumn(column++, hit.pos.x());
@@ -75,15 +106,33 @@ void FillTruth(G4AnalysisManager* manager, G4int& column,
     manager->FillNtupleDColumn(column++, hit.mom.y());
     manager->FillNtupleDColumn(column++, hit.mom.z());
 }
+
+G4double IncomingZenithAngleDegrees(const EventAction::Hit& hit) {
+    const G4double momentumMagnitude = hit.mom.mag();
+    if (momentumMagnitude <= 0.0) {
+        return std::numeric_limits<G4double>::quiet_NaN();
+    }
+    // Cosmic-muon zenith is measured from the downward vertical, -Z.
+    const G4double cosine = std::max(-1.0, std::min(1.0,
+        -hit.mom.z()/momentumMagnitude));
+    return std::acos(cosine)/deg;
+}
 }
 
 EventAction::EventAction(RunAction* runAction)
-    : G4UserEventAction(), fRunAction(runAction), fHitMound(false), fHitRoom(false) {
-    // Flat GEM planes have global-Y normals, so their measured in-plane axes
-    // are global X and global Z regardless of terrain inclination.
+    : G4UserEventAction(), fRunAction(runAction),
+      fNeutronMode(ReadNeutronMode()),
+      fTopNormalizationMode(ReadBooleanSetting("MOUND_TOP_NORMALIZATION_MODE", false)),
+      fHitMound(false), fHitRoom(false), fHitRoomInterior(false) {
+    // The side GEMs are perpendicular to the inclined terrain. Their local X
+    // axis remains global X while their second measured axis follows the
+    // terrain normal. The top monitor is horizontal and measures global X/Y.
+    const G4double incline = ReadFiniteSetting("MOUND_GROUND_INCLINE_DEG", 15.0)*deg;
     fGEMTangentialAxis = G4ThreeVector(1., 0., 0.);
-    fGEMAxialAxis = G4ThreeVector(0., 0., 1.);
-    Reset(fIn1); Reset(fIn2); Reset(fOut1); Reset(fOut2); Reset(fOut3);
+    fGEMAxialAxis = G4ThreeVector(0., std::sin(incline), std::cos(incline));
+    fTopFirstAxis = G4ThreeVector(1., 0., 0.);
+    fTopSecondAxis = G4ThreeVector(0., 1., 0.);
+    Reset(fIn1); Reset(fIn2); Reset(fOut0); Reset(fOut1); Reset(fOut2); Reset(fOut3); Reset(fTop);
 }
 
 EventAction::~EventAction() {}
@@ -91,30 +140,49 @@ EventAction::~EventAction() {}
 void EventAction::Reset(Hit& hit) {
     const G4double missing = std::numeric_limits<G4double>::quiet_NaN();
     hit.pos = hit.mom = hit.gemPos = G4ThreeVector(missing, missing, missing);
-    hit.time = hit.gemTime = hit.gemCharge = missing;
+    hit.time = hit.kineticEnergy = hit.gemTime = hit.gemCharge = missing;
     hit.energy = 0.0;
     hit.hit = hit.gemValid = false;
 }
 
 void EventAction::SetTruth(Hit& hit, G4ThreeVector pos, G4ThreeVector mom,
-                           G4double time) {
+                           G4double time, G4double kineticEnergy) {
     if (!hit.hit) {
-        hit.pos = pos; hit.mom = mom; hit.time = time; hit.hit = true;
+        hit.pos = pos;
+        hit.mom = mom;
+        hit.time = time;
+        hit.kineticEnergy = kineticEnergy;
+        hit.hit = true;
     }
 }
 
-void EventAction::SetHitIn1(G4ThreeVector p, G4ThreeVector m, G4double t) { SetTruth(fIn1, p, m, t); }
-void EventAction::SetHitIn2(G4ThreeVector p, G4ThreeVector m, G4double t) { SetTruth(fIn2, p, m, t); }
-void EventAction::SetHitOut1(G4ThreeVector p, G4ThreeVector m, G4double t) { SetTruth(fOut1, p, m, t); }
-void EventAction::SetHitOut2(G4ThreeVector p, G4ThreeVector m, G4double t) { SetTruth(fOut2, p, m, t); }
-void EventAction::SetHitOut3(G4ThreeVector p, G4ThreeVector m, G4double t) { SetTruth(fOut3, p, m, t); }
+void EventAction::SetHitIn1(G4ThreeVector p, G4ThreeVector m, G4double t, G4double e) { SetTruth(fIn1, p, m, t, e); }
+void EventAction::SetHitIn2(G4ThreeVector p, G4ThreeVector m, G4double t, G4double e) { SetTruth(fIn2, p, m, t, e); }
+void EventAction::SetHitOut0(G4ThreeVector p, G4ThreeVector m, G4double t, G4double e) { SetTruth(fOut0, p, m, t, e); }
+void EventAction::SetHitOut1(G4ThreeVector p, G4ThreeVector m, G4double t, G4double e) { SetTruth(fOut1, p, m, t, e); }
+void EventAction::SetHitOut2(G4ThreeVector p, G4ThreeVector m, G4double t, G4double e) { SetTruth(fOut2, p, m, t, e); }
+void EventAction::SetHitOut3(G4ThreeVector p, G4ThreeVector m, G4double t, G4double e) { SetTruth(fOut3, p, m, t, e); }
+void EventAction::SetHitTop(G4ThreeVector p, G4ThreeVector m, G4double t, G4double e) { SetTruth(fTop, p, m, t, e); }
 void EventAction::AddEnergyIn1(G4double e) { fIn1.energy += e; }
 void EventAction::AddEnergyIn2(G4double e) { fIn2.energy += e; }
 void EventAction::AddEnergyOut1(G4double e) { fOut1.energy += e; }
 void EventAction::AddEnergyOut2(G4double e) { fOut2.energy += e; }
 void EventAction::AddEnergyOut3(G4double e) { fOut3.energy += e; }
+void EventAction::AddEnergyTop(G4double e) { fTop.energy += e; }
 
-void EventAction::Digitize(Hit& hit) {
+void EventAction::Digitize(Hit& hit, const G4ThreeVector& firstAxis,
+                           const G4ThreeVector& secondAxis) {
+    // Neutron mode is a penetration study, not a microscopic GEM-response
+    // model. Treat any neutron plane crossing as an ideal detector hit.
+    // The cosmic-muon response below remains byte-for-byte on its old path.
+    if (fNeutronMode) {
+        if (!hit.hit) return;
+        hit.gemValid = true;
+        hit.gemPos = hit.pos;
+        hit.gemTime = hit.time;
+        hit.gemCharge = 0.0;
+        return;
+    }
     const G4double efficiency = ReadResponseSetting("GEM_EFFICIENCY", kGEMEfficiency);
     const G4double wValue = ReadResponseSetting("GEM_W_VALUE_EV", kGasWValue/eV)*eV;
     const G4double fano = ReadResponseSetting("GEM_FANO_FACTOR", kFanoFactor);
@@ -152,8 +220,8 @@ void EventAction::Digitize(Hit& hit) {
         intrinsicPosition*intrinsicPosition
         + std::pow(stripPitch/(std::sqrt(12.0)*signalToThreshold), 2));
     hit.gemPos = hit.pos
-        + fGEMTangentialAxis*G4RandGauss::shoot(0.0, positionSigma)
-        + fGEMAxialAxis*G4RandGauss::shoot(0.0, positionSigma);
+        + firstAxis*G4RandGauss::shoot(0.0, positionSigma)
+        + secondAxis*G4RandGauss::shoot(0.0, positionSigma);
     const G4double timeSigma = std::sqrt(
         intrinsicTime*intrinsicTime
         + std::pow(thresholdTimeJitter/signalToThreshold, 2));
@@ -161,21 +229,33 @@ void EventAction::Digitize(Hit& hit) {
 }
 
 void EventAction::BeginOfEventAction(const G4Event*) {
-    Reset(fIn1); Reset(fIn2); Reset(fOut1); Reset(fOut2); Reset(fOut3);
-    fHitMound = false; fHitRoom = false;
+    Reset(fIn1); Reset(fIn2); Reset(fOut0); Reset(fOut1); Reset(fOut2); Reset(fOut3); Reset(fTop);
+    fHitMound = false; fHitRoom = false; fHitRoomInterior = false;
 }
 
 void EventAction::EndOfEventAction(const G4Event* event) {
-    // Preserve the established incoming two-plane trigger; the GEM trigger
-    // response is available separately through the GEM*_Valid branches.
-    if (!(fIn2.hit)) return;
-    Digitize(fIn1); Digitize(fIn2); Digitize(fOut1); Digitize(fOut2); Digitize(fOut3);
+    // Side mode preserves the established IN2 truth trigger. Top mode records
+    // only primaries crossing the horizontal normalization detector.
+//    if (!(fIn2.hit && fOut1.hit && fOut2.hit && fOut3.hit)) return;
+    if (fTopNormalizationMode ? !fTop.hit : !fIn2.hit) return;
+    Digitize(fIn1, fGEMTangentialAxis, fGEMAxialAxis);
+    Digitize(fIn2, fGEMTangentialAxis, fGEMAxialAxis);
+    Digitize(fOut1, fGEMTangentialAxis, fGEMAxialAxis);
+    Digitize(fOut2, fGEMTangentialAxis, fGEMAxialAxis);
+    Digitize(fOut3, fGEMTangentialAxis, fGEMAxialAxis);
+    Digitize(fTop, fTopFirstAxis, fTopSecondAxis);
 
     G4int trajectoryFlag = fHitRoom ? 2 : (fHitMound ? 1 : 0);
     auto* manager = G4AnalysisManager::Instance();
     G4int column = 1;
     manager->FillNtupleIColumn(column++, event->GetEventID());
     FillTruth(manager, column, fIn1); FillTruth(manager, column, fIn2);
+    manager->FillNtupleDColumn(column++, IncomingZenithAngleDegrees(fIn2));
+    // Out0 is truth-only: it neither receives GEM digitisation nor participates
+    // in the event trigger or the five-GEM efficiency accounting.
+    manager->FillNtupleDColumn(column++, fOut0.pos.x());
+    manager->FillNtupleDColumn(column++, fOut0.pos.y());
+    manager->FillNtupleDColumn(column++, fOut0.pos.z());
     FillTruth(manager, column, fOut1); FillTruth(manager, column, fOut2);
     FillTruth(manager, column, fOut3);
     manager->FillNtupleIColumn(column++, trajectoryFlag);
@@ -193,11 +273,30 @@ void EventAction::EndOfEventAction(const G4Event* event) {
         manager->FillNtupleDColumn(column++, hit->gemCharge);
         manager->FillNtupleIColumn(column++, hit->gemValid ? 1 : 0);
     }
+    FillTruth(manager, column, fTop);
+    manager->FillNtupleDColumn(column++, IncomingZenithAngleDegrees(fTop));
+    manager->FillNtupleIColumn(column++, fTop.hit ? 1 : 0);
+    manager->FillNtupleIColumn(column++, fHitRoomInterior ? 1 : 0);
+    manager->FillNtupleDColumn(column++, fTop.gemPos.x());
+    manager->FillNtupleDColumn(column++, fTop.gemPos.y());
+    manager->FillNtupleDColumn(column++, fTop.gemPos.z());
+    manager->FillNtupleDColumn(column++, fTop.gemTime/ns);
+    manager->FillNtupleDColumn(column++, fTop.energy/keV);
+    manager->FillNtupleDColumn(column++, fTop.gemCharge);
+    manager->FillNtupleIColumn(column++, fTop.gemValid ? 1 : 0);
+    manager->FillNtupleIColumn(column++, fNeutronMode ? 2112 : 13);
+    manager->FillNtupleDColumn(column++, fIn2.kineticEnergy/GeV);
+    manager->FillNtupleDColumn(column++, fOut1.kineticEnergy/GeV);
     //if (fIn1.gemValid && fIn2.gemValid && fOut1.gemValid
     //    && fOut2.gemValid && fOut3.gemValid) {
     if (fIn2.gemValid && fOut1.gemValid
         && fOut2.gemValid && fOut3.gemValid) {
         fRunAction->RecordFiveGEMEvent();
+    }
+    if (fTop.hit) {
+        fRunAction->RecordTopTruthEvent();
+        if (fTop.gemValid) fRunAction->RecordTopGEMEvent();
+        if (fHitRoomInterior) fRunAction->RecordTopRoomEvent();
     }
     manager->AddNtupleRow();
 }
